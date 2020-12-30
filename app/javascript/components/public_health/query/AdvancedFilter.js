@@ -217,6 +217,11 @@ class AdvancedFilter extends React.Component {
       this.add();
     }
 
+    let currentFitler = JSON.parse(localStorage.getItem(`currentFilter`));
+    if (currentFitler) {
+      this.setState({ activeFilterOptions: currentFitler });
+      this.apply();
+    }
     // Grab saved filters
     axios.defaults.headers.common['X-CSRF-Token'] = this.props.authenticity_token;
     axios.get(window.BASE_PATH + '/user_filters').then(response => {
@@ -233,6 +238,7 @@ class AdvancedFilter extends React.Component {
         }
       });
     });
+    window.onbeforeunload = () => localStorage.setItem(`currentFilter`, JSON.stringify(this.state.activeFilterOptions));
   }
 
   // Add dummy active (default to first option which is a boolean type). User can then edit as needed.
