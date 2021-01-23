@@ -624,6 +624,13 @@ class Patient extends React.Component {
                         <b>NOTES</b>
                       </div>
                     </div>
+                    <div>
+                      {this.props.goto && (
+                        <Button variant="link" className="pt-0" onClick={() => this.props.goto(5)}>
+                          <div className="h5">(Edit)</div>
+                        </Button>
+                      )}
+                    </div>
                     <div className="clearfix"></div>
                   </Col>
                 </Row>
