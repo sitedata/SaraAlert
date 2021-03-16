@@ -3,7 +3,9 @@ import { PropTypes } from 'prop-types';
 import { Button, Modal, Form } from 'react-bootstrap';
 import _ from 'lodash';
 import axios from 'axios';
+import ReactTooltip from 'react-tooltip';
 
+import ApplyToHousehold from '../household_actions/ApplyToHousehold';
 import InfoTooltip from '../../util/InfoTooltip';
 import reportError from '../../util/ReportError';
 
@@ -16,8 +18,10 @@ class Jurisdiction extends React.Component {
       original_jurisdiction_id: this.props.patient.jurisdiction_id,
       validJurisdiction: true,
       apply_to_household: false,
-      loading: false,
+      apply_to_household_ids: [],
       reasoning: '',
+      loading: false,
+      noMembersSelected: false,
     };
     this.origState = Object.assign({}, this.state);
   }
@@ -29,14 +33,19 @@ class Jurisdiction extends React.Component {
     });
   };
 
-  handleApplyHouseholdChange = event => {
-    const applyToHousehold = event.target.id === 'apply_to_household_yes';
-    this.setState({ apply_to_household: applyToHousehold });
-  };
-
   handleReasoningChange = event => {
     let value = event?.target?.value;
     this.setState({ [event.target.id]: value || '' });
+  };
+
+  handleApplyHouseholdChange = apply_to_household => {
+    const noMembersSelected = apply_to_household && this.state.apply_to_household_ids.length === 0;
+    this.setState({ apply_to_household, noMembersSelected });
+  };
+
+  handleApplyHouseholdIdsChange = apply_to_household_ids => {
+    const noMembersSelected = this.state.apply_to_household && apply_to_household_ids.length === 0;
+    this.setState({ apply_to_household_ids, noMembersSelected });
   };
 
   // if user hits the Enter key after changing the jurisdiction value, shows the modal (in leu of clicking the button)
@@ -57,7 +66,9 @@ class Jurisdiction extends React.Component {
       showJurisdictionModal: !current,
       jurisdiction_path: current ? this.props.jurisdiction_paths[this.state.original_jurisdiction_id] : this.state.jurisdiction_path,
       apply_to_household: false,
+      apply_to_household_ids: [],
       reasoning: '',
+      noMembersSelected: false,
     });
   };
 
@@ -74,6 +85,7 @@ class Jurisdiction extends React.Component {
           jurisdiction_id: Object.keys(this.props.jurisdiction_paths).find(id => this.props.jurisdiction_paths[parseInt(id)] === this.state.jurisdiction_path),
           reasoning: this.state.reasoning,
           apply_to_household: this.state.apply_to_household,
+          apply_to_household_ids: this.state.apply_to_household_ids,
           diffState: diffState,
         })
         .then(() => {
@@ -87,8 +99,8 @@ class Jurisdiction extends React.Component {
             location.reload(true);
           }
         })
-        .catch(error => {
-          reportError(error);
+        .catch(err => {
+          reportError(err?.response?.data?.error ? err.response.data.error : err, false);
         });
     });
   };
@@ -105,30 +117,14 @@ class Jurisdiction extends React.Component {
             {this.state.jurisdiction_path}&quot;?
             {this.state.assigned_user !== '' && <b> Please also consider removing or updating the assigned user if it is no longer applicable.</b>}
           </p>
-          {this.props.has_dependents && (
-            <React.Fragment>
-              <p className="mb-2">Please select the records that you would like to apply this change to:</p>
-              <Form.Group className="px-4">
-                <Form.Check
-                  type="radio"
-                  className="mb-1"
-                  name="apply_to_household"
-                  id="apply_to_household_no"
-                  label="This monitoree only"
-                  onChange={this.handleApplyHouseholdChange}
-                  checked={!this.state.apply_to_household}
-                />
-                <Form.Check
-                  type="radio"
-                  className="mb-3"
-                  name="apply_to_household"
-                  id="apply_to_household_yes"
-                  label="This monitoree and all household members"
-                  onChange={this.handleApplyHouseholdChange}
-                  checked={this.state.apply_to_household}
-                />
-              </Form.Group>
-            </React.Fragment>
+          {this.props.household_members.length > 0 && (
+            <ApplyToHousehold
+              household_members={this.props.household_members}
+              current_user={this.props.current_user}
+              jurisdiction_paths={this.props.jurisdiction_paths}
+              handleApplyHouseholdChange={this.handleApplyHouseholdChange}
+              handleApplyHouseholdIdsChange={this.handleApplyHouseholdIdsChange}
+            />
           )}
           <Form.Group>
             <Form.Label>Please include any additional details:</Form.Label>
@@ -139,13 +135,20 @@ class Jurisdiction extends React.Component {
           <Button variant="secondary btn-square" onClick={toggle}>
             Cancel
           </Button>
-          <Button variant="primary btn-square" onClick={submit} disabled={this.state.loading}>
+          <Button variant="primary btn-square" onClick={submit} disabled={this.state.loading || this.state.noMembersSelected}>
             {this.state.loading && (
               <React.Fragment>
                 <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>&nbsp;
               </React.Fragment>
             )}
-            Submit
+            <span data-for="jurisdiction-submit" data-tip="">
+              Submit
+            </span>
+            {this.state.noMembersSelected && (
+              <ReactTooltip id="jurisdiction-submit" multiline={true} place="top" type="dark" effect="solid" className="tooltip-container">
+                <div>Please select at least one household member or change your selection to apply to this monitoree only</div>
+              </ReactTooltip>
+            )}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -199,7 +202,7 @@ class Jurisdiction extends React.Component {
 Jurisdiction.propTypes = {
   patient: PropTypes.object,
   authenticity_token: PropTypes.string,
-  has_dependents: PropTypes.bool,
+  household_members: PropTypes.array,
   jurisdiction_paths: PropTypes.object,
   current_user: PropTypes.object,
   user_can_transfer: PropTypes.bool,

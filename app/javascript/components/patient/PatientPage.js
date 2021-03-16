@@ -21,7 +21,6 @@ class PatientPage extends React.Component {
         <Card id="patient-page" className="mx-2 card-square">
           <Card.Header className="h5" id="patient-info-header">
             Monitoree Details {this.props.patient.user_defined_id ? `(ID: ${this.props.patient.user_defined_id})` : ''}{' '}
-            {this.props.patient.id && <a href={window.BASE_PATH + '/patients/' + this.props.patient.id + '/edit'}>(edit details)</a>}
           </Card.Header>
           <Card.Body>
             <Patient
@@ -29,7 +28,8 @@ class PatientPage extends React.Component {
               dependents={this.props.dependents || []}
               details={{ ...this.props.patient, blocked_sms: this.props.blocked_sms }}
               hideBody={this.state.hideBody}
-              editMode={false}
+              can_add_group={this.props.can_add_group}
+              edit_mode={false}
               authenticity_token={this.props.authenticity_token}
             />
           </Card.Body>
@@ -42,6 +42,7 @@ class PatientPage extends React.Component {
 PatientPage.propTypes = {
   patient_id: PropTypes.string,
   current_user: PropTypes.object,
+  can_add_group: PropTypes.bool,
   patient: PropTypes.object,
   dependents: PropTypes.array,
   dashboardUrl: PropTypes.string,

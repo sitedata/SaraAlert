@@ -56,26 +56,26 @@ class ImportController < ApplicationController
               if col_num == 95
                 patient[:jurisdiction_id], patient[:jurisdiction_path] = validate_jurisdiction(row[95], row_ind, valid_jurisdiction_ids)
               elsif col_num == 96
-                patient[:assigned_user] = validate_assigned_user(row[96], row_ind)
+                patient[:assigned_user] = import_assigned_user(row[96])
               elsif col_num == 85 && workflow == :isolation
                 patient[:user_defined_symptom_onset] = row[85].present?
-                patient[field] = validate_field(field, row[col_num], row_ind)
+                patient[field] = import_field(field, row[col_num], row_ind)
               # TODO: when workflow specific case status validation re-enabled: uncomment
               # elsif col_num == 86
               #   patient[field] = validate_workflow_specific_enums(workflow, field, row[col_num], row_ind)
               else
                 # TODO: when workflow specific case status validation re-enabled: this line can be updated to not have to check the 86 col
-                patient[field] = validate_field(field, row[col_num], row_ind) unless [85, 86].include?(col_num) && workflow != :isolation
+                patient[field] = import_field(field, row[col_num], row_ind) unless [85, 86].include?(col_num) && workflow != :isolation
               end
             end
 
             if format == :epix
               patient[field] = if col_num == 34 # copy over potential exposure country to location
-                                 validate_field(field, row[35], row_ind)
+                                 import_field(field, row[35], row_ind)
                                elsif [41, 42].include?(col_num) # contact of known case and was in healthcare facilities
-                                 validate_field(field, !row[col_num].blank?, row_ind)
+                                 import_field(field, !row[col_num].blank?, row_ind)
                                else
-                                 validate_field(field, row[col_num], row_ind)
+                                 import_field(field, row[col_num], row_ind)
                                end
             end
           rescue ValidationError => e
@@ -86,26 +86,13 @@ class ImportController < ApplicationController
         end
 
         begin
-          # Run validations on fields that have restrictions conditional on other fields
-          validate_required_primary_contact(patient, row_ind)
-
           # Validate using Patient model validators without saving
-          # NOTE: Using dummy values for required fields to satisfy basic checks on those fields that will be added later outside of import
-          # NOTE: Commented out until additional testing
-          # temp_patient_data = patient.merge({ responder_id: 1, creator_id: 1, jurisdiction_id: 1 })
-          # temp_patient = Patient.new(temp_patient_data)
-          # unless temp_patient.valid?
-          #   temp_patient.errors.messages.each_value do |err_message|
-          #     @errors << "Validation Error (row #{row_ind}): #{err_message[0]}"
-          #   end
-          # end
-
-          # Checking for duplicates under current user's viewable patients is acceptable because custom jurisdictions must fall under hierarchy
-          patient[:duplicate_data] = current_user.viewable_patients.duplicate_data(patient[:first_name],
-                                                                                   patient[:last_name],
-                                                                                   patient[:sex],
-                                                                                   patient[:date_of_birth],
-                                                                                   patient[:user_defined_id_statelocal])
+          validation_patient = Patient.new(patient.slice(*Patient.attribute_names.map(&:to_sym)))
+          unless validation_patient.valid?(:import)
+            format_model_validation_errors(validation_patient).each do |error|
+              @errors << ValidationError.new(error, row_ind).message
+            end
+          end
 
           if format == :sara_alert_format
             lab_results = []
@@ -114,19 +101,23 @@ class ImportController < ApplicationController
             patient[:laboratories_attributes] = lab_results unless lab_results.empty?
 
             # Validate using Laboratory model validators without saving
-            # NOTE: Using dummy values for patient to satisfy basic validation on that field
-            # NOTE: Commented out until additional testing
-            # lab_results.each do |lab_data|
-            #   temp_lab_data = lab_data.merge({ patient_id: 1 })
-            #   temp_lab_result = Laboratory.new(temp_lab_data)
-            #   next if temp_lab_result.valid?
+            lab_results.each do |lab_data|
+              validation_lab_result = Laboratory.new(lab_data)
+              next if validation_lab_result.valid?(:import)
 
-            #   temp_lab_result.errors.messages.each_value do |err_message|
-            #     @errors << "Validation Error (row #{row_ind}): #{err_message[0]}"
-            #   end
-            # end
+              format_model_validation_errors(validation_lab_result).each do |error|
+                @errors << ValidationError.new(error, row_ind).message
+              end
+            end
 
           end
+
+          # Checking for duplicates under current user's viewable patients is acceptable because custom jurisdictions must fall under hierarchy
+          patient[:duplicate_data] = current_user.viewable_patients.duplicate_data(patient[:first_name],
+                                                                                   patient[:last_name],
+                                                                                   patient[:sex],
+                                                                                   patient[:date_of_birth],
+                                                                                   patient[:user_defined_id_statelocal])
         rescue ValidationError => e
           @errors << e&.message || "Unknown error on row #{row_ind}"
         rescue StandardError => e
@@ -152,10 +143,10 @@ class ImportController < ApplicationController
 
   def lab_result(data, row_ind)
     {
-      lab_type: validate_enum_field(:lab_type, data[0], row_ind),
-      specimen_collection: validate_field(:specimen_collection, data[1], row_ind),
-      report: validate_field(:report, data[2], row_ind),
-      result: validate_enum_field(:result, data[3], row_ind)
+      lab_type: import_field(:lab_type, data[0], row_ind),
+      specimen_collection: import_field(:specimen_collection, data[1], row_ind),
+      report: import_field(:report, data[2], row_ind),
+      result: import_field(:result, data[3], row_ind)
     }
   end
 
@@ -182,18 +173,18 @@ class ImportController < ApplicationController
     end
   end
 
-  def validate_field(field, value, row_ind)
+  def import_field(field, value, row_ind)
     return value unless VALIDATION[field]
 
     # TODO: Un-comment when required fields are to be checked upon import
     # value = validate_required_field(field, value, row_ind) if VALIDATION[field][:checks].include?(:required)
-    value = validate_enum_field(field, value, row_ind) if VALIDATION[field][:checks].include?(:enum)
-    value = validate_bool_field(field, value, row_ind) if VALIDATION[field][:checks].include?(:bool)
-    value = validate_date_field(field, value, row_ind) if VALIDATION[field][:checks].include?(:date)
-    value = validate_phone_field(field, value, row_ind) if VALIDATION[field][:checks].include?(:phone)
-    value = validate_state_field(field, value, row_ind) if VALIDATION[field][:checks].include?(:state)
-    value = validate_sex_field(field, value, row_ind) if VALIDATION[field][:checks].include?(:sex)
-    value = validate_email_field(field, value, row_ind) if VALIDATION[field][:checks].include?(:email)
+    value = import_enum_field(field, value) if VALIDATION[field][:checks].include?(:enum)
+    value = import_and_validate_bool_field(field, value, row_ind) if VALIDATION[field][:checks].include?(:bool)
+    value = import_date_field(value) if VALIDATION[field][:checks].include?(:date)
+    value = import_phone_field(value) if VALIDATION[field][:checks].include?(:phone)
+    value = import_and_validate_state_field(field, value, row_ind) if VALIDATION[field][:checks].include?(:state)
+    value = import_sex_field(field, value) if VALIDATION[field][:checks].include?(:sex)
+    value = import_email_field(value) if VALIDATION[field][:checks].include?(:email)
     value
   end
 
@@ -203,82 +194,57 @@ class ImportController < ApplicationController
     value
   end
 
-  def validate_enum_field(field, value, row_ind)
+  def import_enum_field(field, value)
     return nil if value.blank?
 
     normalized_value = normalize_enum_field_value(value)
-    return NORMALIZED_ENUMS[field][normalized_value] if NORMALIZED_ENUMS[field].keys.include?(normalized_value)
-
-    err_msg = "'#{value}' is not an acceptable value for '#{VALIDATION[field][:label]}',"\
-              " acceptable values are: #{VALID_PATIENT_ENUMS[field].reject(&:blank?).to_sentence}"
-    raise ValidationError.new(err_msg, row_ind)
+    NORMALIZED_ENUMS[field].keys.include?(normalized_value) ? NORMALIZED_ENUMS[field][normalized_value] : value
   end
 
-  def validate_bool_field(field, value, row_ind)
+  def import_and_validate_bool_field(field, value, row_ind)
     return value if value.blank?
     return (value.to_s.downcase == 'true') if %w[true false].include?(value.to_s.downcase)
 
-    err_msg = "'#{value}' is not an acceptable value for '#{VALIDATION[field][:label]}', acceptable values are: 'True' and 'False'"
+    # NOTE: The controller still validates boolean values, since validating those on the model does not work
+    # because by that point they will have been typecast from a string to a bool
+    err_msg = "Value '#{value}' for '#{VALIDATION[field][:label]}' is not an acceptable value, acceptable values are: 'True' and 'False'"
     raise ValidationError.new(err_msg, row_ind)
   end
 
-  def validate_date_field(field, value, row_ind)
-    return nil if value.blank?
-    return value if value.instance_of?(Date)
-
-    unless value.match(/\d{4}-\d{2}-\d{2}/)
-      err_msg = "'#{value}' is not a valid date for '#{VALIDATION[field][:label]}'"
-      if value.match(%r{\d{2}/\d{2}/\d{4}})
-        raise ValidationError.new("#{err_msg} due to ambiguity between 'MM/DD/YYYY' and 'DD/MM/YYYY', please use the 'YYYY-MM-DD' format instead", row_ind)
-      end
-
-      raise ValidationError.new("#{err_msg}, please use the 'YYYY-MM-DD' format", row_ind)
-    end
-
-    begin
-      Date.parse(value)
-    rescue ArgumentError
-      raise ValidationError.new("'#{value}' is not a valid date for '#{VALIDATION[field][:label]}'", row_ind)
-    end
+  def import_date_field(value)
+    value.blank? ? nil : value
   end
 
-  def validate_phone_field(field, value, row_ind)
-    return nil if value.blank?
-
-    phone = Phonelib.parse(value, 'US')
-    return phone.full_e164 unless phone.national(false).nil? || phone.national(false).length != 10
-
-    raise ValidationError.new("'#{value}' is not a valid phone number for '#{VALIDATION[field][:label]}'", row_ind)
+  def import_phone_field(value)
+    e_164 = Phonelib.parse(value, 'US').full_e164
+    e_164.blank? ? value : e_164
   end
 
-  def validate_state_field(field, value, row_ind)
+  def import_and_validate_state_field(field, value, row_ind)
     return nil if value.blank?
     return normalize_and_get_state_name(value) if VALID_STATES.include?(normalize_and_get_state_name(value))
 
     normalized_state = STATE_ABBREVIATIONS[value.upcase.to_sym]
     return normalized_state if normalized_state
 
+    # NOTE: Currently only import allows abbreviated state names. If that changes and we begin allowing abbreviations
+    # via other controllers, it will probably make sense to move this error onto the Patient model
     err_msg = "'#{value}' is not a valid state for '#{VALIDATION[field][:label]}', please use the full state name or two letter abbreviation"
     raise ValidationError.new(err_msg, row_ind)
   end
 
-  def validate_sex_field(field, value, row_ind)
+  def import_sex_field(field, value)
     return nil if value.blank?
-    return value if %w[Male Female Unknown].include?(value.capitalize)
+
+    normalized_value = normalize_enum_field_value(value)
+    return NORMALIZED_ENUMS[field][normalized_value] if NORMALIZED_ENUMS[field].keys.include?(normalized_value)
 
     normalized_sex = SEX_ABBREVIATIONS[value.upcase.to_sym]
-    return normalized_sex if normalized_sex
-
-    raise ValidationError.new("'#{value}' is not a valid sex for '#{VALIDATION[field][:label]}', acceptable values are Male, Female, and Unknown", row_ind)
+    normalized_sex || value
   end
 
-  def validate_email_field(field, value, row_ind)
-    return nil if value.blank?
-    unless ValidEmail2::Address.new(value).valid?
-      raise ValidationError.new("'#{value}' is not a valid Email Address for '#{VALIDATION[field][:label]}'", row_ind)
-    end
-
-    value
+  def import_email_field(value)
+    value.blank? ? nil : value
   end
 
   def validate_jurisdiction(value, row_ind, valid_jurisdiction_ids)
@@ -296,12 +262,8 @@ class ImportController < ApplicationController
     raise ValidationError.new("'#{value}' is not valid for 'Full Assigned Jurisdiction Path' because you do not have permission to import into it", row_ind)
   end
 
-  def validate_assigned_user(value, row_ind)
-    return nil if value.blank?
-
-    return value.to_i if value.to_i.between?(1, 999_999)
-
-    raise ValidationError.new("'#{value}' is not valid for 'Assigned User', acceptable values are numbers between 1-999999", row_ind)
+  def import_assigned_user(value)
+    value.blank? ? nil : value
   end
 
   def validate_workflow_specific_enums(workflow, field, value, row_ind)
@@ -320,17 +282,6 @@ class ImportController < ApplicationController
       err_msg += "acceptable values are: #{VALID_ISOLATION_ENUMS[field].to_sentence}"
     end
     raise ValidationError.new(err_msg, row_ind)
-  end
-
-  def validate_required_primary_contact(patient, row_ind)
-    if patient[:email].blank? && patient[:preferred_contact_method] == 'E-mailed Web Link'
-      raise ValidationError.new("'Email' is required when Primary Contact Method is 'E-mailed Web Link'", row_ind)
-    end
-    unless patient[:primary_telephone].blank? && (['SMS Texted Weblink', 'Telephone call', 'SMS Text-message'].include? patient[:preferred_contact_method])
-      return
-    end
-
-    raise ValidationError.new("'Primary Telephone' is required when Primary Contact Method is '#{patient[:preferred_contact_method]}'", row_ind)
   end
 end
 

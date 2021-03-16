@@ -7,7 +7,6 @@ module PatientHelper
     PATIENT_HELPER_FILES[:state_names]
   end
 
-  # Offsets are DST
   def states_with_time_zone_data
     PATIENT_HELPER_FILES[:states_with_time_zone_data]
   end
@@ -30,17 +29,9 @@ module PatientHelper
   end
 
   def time_zone_offset_for_state(name)
-    # Grab state time zone information by name
-    state = states_with_time_zone_data[normalize_name(name)]
-
-    # Grab time zone offset
-    offset = state.nil? ? -4 : state[:offset]
-
-    # Adjust for DST (if observed)
-    offset -= 1 if state && state[:observes_dst] && !Time.use_zone('Eastern Time (US & Canada)') { Time.now.dst? }
-
-    # Format and return the offset
-    (offset.negative? ? '' : '+') + format('%<offset>.2d', offset: offset) + ':00'
+    # Call TimeZone#now to create a TimeWithZone object that will contextualize
+    # the time to the current truth
+    ActiveSupport::TimeZone[time_zone_for_state(name)].now.formatted_offset
   end
 
   def time_zone_for_state(name)
@@ -74,39 +65,6 @@ module PatientHelper
       user_defined_symptom_onset
       extended_isolation
       jurisdiction_id
-    ]
-  end
-
-  def self.info_fields
-    %i[
-      isolation
-      first_name
-      middle_name
-      last_name
-      secondary_telephone
-      email
-      date_of_birth
-      address_line_1
-      address_line_2
-      address_city
-      address_state
-      address_zip
-      monitored_address_line_1
-      monitored_address_line_2
-      monitored_address_city
-      monitored_address_state
-      monitored_address_zip
-      primary_language
-      interpretation_required
-      white
-      black_or_african_american
-      american_indian_or_alaska_native
-      asian
-      native_hawaiian_or_other_pacific_islander
-      ethnicity
-      sex
-      preferred_contact_method
-      preferred_contact_time
     ]
   end
 end

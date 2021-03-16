@@ -2,9 +2,21 @@
 
 # Laboratory: represents a lab result
 class Laboratory < ApplicationRecord
-  belongs_to :patient
+  include ValidationHelper
+
+  belongs_to :patient, touch: true
 
   validates :result, inclusion: { in: ['positive', 'negative', 'indeterminate', 'other', nil, ''] }
+
+  validates :lab_type, on: %i[api import], inclusion: {
+    in: VALID_PATIENT_ENUMS[:lab_type],
+    message: "is not an acceptable value, acceptable values are: '#{VALID_PATIENT_ENUMS[:lab_type].reject(&:blank?).join("', '")}'"
+  }
+
+  %i[specimen_collection
+     report].each do |date_field|
+    validates date_field, on: %i[api import], date: true
+  end
 
   # NOTE: Commented out until additional testing
   # validates_with LaboratoryDateValidator
@@ -36,22 +48,6 @@ class Laboratory < ApplicationRecord
       lab_created_at: created_at || '',
       lab_updated_at: updated_at || ''
     }
-  end
-
-  def custom_details(fields, patient_identifiers)
-    laboratory_details = {}
-    laboratory_details[:id] = id || '' if fields.include?(:id)
-    laboratory_details[:patient_id] = patient_id || '' if fields.include?(:patient_id)
-    laboratory_details[:user_defined_id_statelocal] = patient_identifiers[:user_defined_id_statelocal]
-    laboratory_details[:user_defined_id_cdc] = patient_identifiers[:user_defined_id_cdc]
-    laboratory_details[:user_defined_id_nndss] = patient_identifiers[:user_defined_id_nndss]
-    laboratory_details[:lab_type] = lab_type || '' if fields.include?(:lab_type)
-    laboratory_details[:specimen_collection] = specimen_collection&.strftime('%F') || '' if fields.include?(:specimen_collection)
-    laboratory_details[:report] = report&.strftime('%F') || '' if fields.include?(:report)
-    laboratory_details[:result] = result || '' if fields.include?(:result)
-    laboratory_details[:created_at] = created_at || '' if fields.include?(:created_at)
-    laboratory_details[:updated_at] = updated_at || '' if fields.include?(:updated_at)
-    laboratory_details
   end
 
   private

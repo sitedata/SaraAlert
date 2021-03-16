@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'axlsx'
-
 # ExportController: for exporting subjects
 class ExportController < ApplicationController
   include ImportExport
@@ -104,10 +102,9 @@ class ExportController < ApplicationController
           name: 'Monitorees',
           tab: 'Monitorees List'
         },
-        # assessment fields and headers need to be duplicated because they may be modified
         assessments: {
-          checked: FULL_HISTORY_ASSESSMENTS_FIELDS.dup,
-          headers: FULL_HISTORY_ASSESSMENTS_HEADERS.dup,
+          checked: FULL_HISTORY_ASSESSMENTS_FIELDS,
+          headers: FULL_HISTORY_ASSESSMENTS_HEADERS,
           name: 'Reports',
           tab: 'Reports'
         },
@@ -141,35 +138,37 @@ class ExportController < ApplicationController
 
     History.monitoree_data_downloaded(patient: patients.first, created_by: current_user.email)
 
-    config = {
-      format: 'xlsx',
-      separate_files: false,
-      data: {
-        patients: {
-          checked: FULL_HISTORY_PATIENTS_FIELDS,
-          headers: FULL_HISTORY_PATIENTS_HEADERS,
-          tab: 'Monitorees List'
-        },
-        # assessment fields and headers need to be duplicated because they may be modified
-        assessments: {
-          checked: FULL_HISTORY_ASSESSMENTS_FIELDS.dup,
-          headers: FULL_HISTORY_ASSESSMENTS_HEADERS.dup,
-          tab: 'Reports'
-        },
-        laboratories: {
-          checked: FULL_HISTORY_LABORATORIES_FIELDS,
-          headers: FULL_HISTORY_LABORATORIES_HEADERS,
-          tab: 'Lab Results'
-        },
-        histories: {
-          checked: FULL_HISTORY_HISTORIES_FIELDS,
-          headers: FULL_HISTORY_HISTORIES_HEADERS,
-          tab: 'Edit Histories'
-        }
-      }
-    }
+    # NOTE: separate implementation used for single patient export for performance and to keep this endpoint's logic separate from main export logic
+    # Get all of the field data based on the config
+    field_data, symptom_names = get_field_data(FULL_HISTORY_PATIENT_CONFIG, patients)
 
-    send_data write_export_data_to_files(config, patients, nil, 1)[0][:content]
+    # Create export file
+    workbook = FastExcel.open
+    sheets = {}
+    last_row_nums = {}
+    FULL_HISTORY_PATIENT_CONFIG[:data].each_key do |data_type|
+      # Add separate worksheet for each data type
+      worksheet = workbook.add_worksheet(FULL_HISTORY_PATIENT_CONFIG[:data][data_type][:tab])
+      worksheet.auto_width = true
+      worksheet.append_row(field_data.dig(data_type, :headers))
+      last_row_nums[data_type] = 0
+      sheets[data_type] = worksheet
+    end
+
+    # Get export data hashes for each data type from config and write data to each sheet
+    exported_data = get_export_data(patients, FULL_HISTORY_PATIENT_CONFIG[:data], field_data, symptom_names)
+    FULL_HISTORY_PATIENT_CONFIG[:data].each_key do |data_type|
+      exported_data[data_type]&.each do |record|
+        # fast_excel unfortunately does not provide a method to modify the @last_row_number class variable so it needs to be manually kept track of
+        last_row_nums[data_type] += 1
+        record.each_with_index do |value, col_index|
+          sheets[data_type].write_string(last_row_nums[data_type], col_index, value.to_s, nil)
+        end
+      end
+    end
+
+    # Send file
+    send_data Base64.encode64(workbook.read_string)
   end
 
   # Single patient NBS export

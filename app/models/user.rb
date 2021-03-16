@@ -87,10 +87,10 @@ class User < ApplicationRecord
   def jurisdictions_for_transfer
     if can_transfer_patients?
       # Allow all jurisdictions as valid transfer options.
-      Hash[Jurisdiction.all.where.not(name: 'USA').pluck(:id, :path).map { |id, path| [id, path] }]
+      Hash[Jurisdiction.all.where.not(name: 'USA').pluck(:id, :path)]
     else
       # Otherwise, only show jurisdictions within hierarchy.
-      Hash[jurisdiction.subtree.pluck(:id, :path).map { |id, path| [id, path] }]
+      Hash[jurisdiction.subtree.pluck(:id, :path)]
     end
   end
 
@@ -151,6 +151,21 @@ class User < ApplicationRecord
   # Can this user edit a Patient?
   def can_edit_patient?
     role?(Roles::ENROLLER) || role?(Roles::PUBLIC_HEALTH) || role?(Roles::CONTACT_TRACER) || role?(Roles::PUBLIC_HEALTH_ENROLLER) || role?(Roles::SUPER_USER)
+  end
+
+  # Can this user view Patient vaccines?
+  def can_view_patient_vaccines?
+    role?(Roles::PUBLIC_HEALTH) || role?(Roles::CONTACT_TRACER) || role?(Roles::PUBLIC_HEALTH_ENROLLER) || role?(Roles::SUPER_USER)
+  end
+
+  # Can this user edit Patient vaccines?
+  def can_edit_patient_vaccines?
+    role?(Roles::PUBLIC_HEALTH) || role?(Roles::CONTACT_TRACER) || role?(Roles::PUBLIC_HEALTH_ENROLLER) || role?(Roles::SUPER_USER)
+  end
+
+  # Can this user create Patient vaccines?
+  def can_create_patient_vaccines?
+    role?(Roles::PUBLIC_HEALTH) || role?(Roles::CONTACT_TRACER) || role?(Roles::PUBLIC_HEALTH_ENROLLER) || role?(Roles::SUPER_USER)
   end
 
   # Can this user view Patient lab results?

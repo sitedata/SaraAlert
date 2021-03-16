@@ -28,37 +28,43 @@ class Patient < ApplicationRecord
     in: VALID_PATIENT_ENUMS[:monitoring_plan],
     message: "is not an acceptable value, acceptable values are: '#{VALID_PATIENT_ENUMS[:monitoring_plan].reject(&:blank?).join("', '")}'"
   }
+
   validates :exposure_risk_assessment, inclusion: {
     in: VALID_PATIENT_ENUMS[:exposure_risk_assessment],
     message: "is not an acceptable value, acceptable values are: '#{VALID_PATIENT_ENUMS[:exposure_risk_assessment].reject(&:blank?).join("', '")}'"
   }
 
   %i[address_state
-     ethnicity
      monitored_address_state
+     foreign_monitored_address_state
+     additional_planned_travel_destination_state
+     ethnicity
      preferred_contact_method
      preferred_contact_time
      sex
      primary_telephone_type
-     secondary_telephone_type].each do |enum_field|
-    validates enum_field, on: :api, inclusion: {
+     secondary_telephone_type
+     additional_planned_travel_type
+     case_status].each do |enum_field|
+    validates enum_field, on: %i[api import], inclusion: {
       in: VALID_PATIENT_ENUMS[enum_field],
-      message: "is not an acceptable value, acceptable values are: '#{VALID_PATIENT_ENUMS[enum_field].join("', '")}'"
-    }, allow_blank: true
+      message: "is not an acceptable value, acceptable values are: '#{VALID_PATIENT_ENUMS[enum_field].reject(&:blank?).join("', '")}'"
+    }
   end
 
   %i[primary_telephone
      secondary_telephone].each do |phone_field|
-    validates phone_field, on: :api, phone_number: true
+    validates phone_field, on: %i[api import], phone_number: true
   end
 
   %i[date_of_birth
      last_date_of_exposure
      symptom_onset
      additional_planned_travel_start_date
+     additional_planned_travel_end_date
      date_of_departure
      date_of_arrival].each do |date_field|
-    validates date_field, on: :api, date: true
+    validates date_field, on: %i[api import], date: true
   end
 
   %i[date_of_birth
@@ -79,14 +85,24 @@ class Patient < ApplicationRecord
 
   validates :last_date_of_exposure,
             on: :api,
-            presence: { message: "is required when 'Isolation' is 'false'" },
-            if: -> { !isolation }
+            presence: { message: "is required when 'Isolation' is 'false' and 'Continuous Exposure' is 'false'" },
+            if: -> { !isolation && !continuous_exposure }
 
-  validates :email, on: :api, email: true
+  validates :continuous_exposure,
+            on: :api,
+            absence: { message: "cannot be 'true' when 'Last Date of Exposure' is specified" },
+            if: -> { last_date_of_exposure.present? }
 
-  validates :assigned_user, numericality: { only_integer: true, allow_nil: true, greater_than: 0, less_than_or_equal_to: 999_999 }
+  validates :email, on: %i[api import], email: true
 
-  validates_with PrimaryContactValidator, on: :api
+  validates :assigned_user, numericality: { only_integer: true,
+                                            allow_nil: true,
+                                            greater_than: 0,
+                                            less_than_or_equal_to: 999_999,
+                                            message: 'is not valid, acceptable values are numbers between 1-999999' }
+
+  validates_with PrimaryContactValidator, on: %i[api import]
+  validates_with RaceValidator, on: %i[api import]
 
   # NOTE: Commented out until additional testing
   # validates_with PatientDateValidator
@@ -99,6 +115,7 @@ class Patient < ApplicationRecord
   has_many :histories
   has_many :transfers
   has_many :laboratories
+  has_many :vaccines
   has_many :close_contacts
   has_many :contact_attempts
 
@@ -131,6 +148,152 @@ class Patient < ApplicationRecord
       .where.not(preferred_contact_method: ['Unknown', 'Opt-out', '', nil])
       .where('last_assessment_reminder_sent <= ? OR last_assessment_reminder_sent IS NULL', 12.hours.ago)
       .where('latest_assessment_at < ? OR latest_assessment_at IS NULL', Time.now.in_time_zone('Eastern Time (US & Canada)').beginning_of_day)
+  }
+
+  # Patients who are eligible for reminders
+  #
+  # GENERAL SCOPE OVERVIEW:
+  # - Everything before the OR is essentially checking if the HoH or the patient
+  #   who isn't in a household is eligible on their own.
+  # - Everything within the OR is checking if the HoH has any DEPENDENTS (excluding self)
+  #   that would make the HoH eligible to receive notifications for them.
+  scope :better_reminder_eligible, lambda {
+    joins(:dependents)
+      .monitoring_open
+      .within_preferred_contact_time
+      .has_not_reported_recently
+      .is_being_monitored
+      .has_usable_preferred_contact_method
+      .where('patients.id = patients.responder_id')
+      .where(pause_notifications: false)
+      .reminder_not_sent_recently
+      .or(has_eligible_dependents)
+  }
+
+  # Pateints should be reminded to report once within the reporting period.
+  #
+  # Period is based on the reporting_period_minutes, but is rounded by days.
+  #
+  # Example: 1 day reporting period => was patient last reminder before midnight today?
+  # Example: 2 day reporting period => was patient last reminder before midnight yesterday?
+  # Example: 7 day reporting period => was patient last reminder before midnight 6 days ago?
+  scope :reminder_not_sent_recently, lambda {
+    where(
+      # Converting to a timezone, then casting to date effectively gives us
+      # the start of the day in that timezone to make comparisons with.
+      'patients.last_assessment_reminder_sent IS NULL OR '\
+      'DATE_ADD('\
+      '    DATE(CONVERT_TZ(patients.last_assessment_reminder_sent, "UTC", patients.time_zone)),'\
+      '    INTERVAL ? DAY'\
+      ') < CONVERT_TZ(?, "UTC", patients.time_zone)',
+      (ADMIN_OPTIONS['reporting_period_minutes'] / 1440).to_i,
+      Time.now.getlocal('-00:00')
+    )
+  }
+
+  # Non-eligible contact methods are: ['Unknown', 'Opt-out', '', nil]
+  scope :has_usable_preferred_contact_method, lambda {
+    where.not(preferred_contact_method: ['Unknown', 'Opt-out', '', nil])
+  }
+
+  # Check if the HoH has any dependents that make them eligible to
+  # recieve notifications on the dependent's behalf.
+  # The joined table is referred to as `dependents_patients` and is used for all
+  # checks made on the dependents. Anywhere the `patients` table is specified or
+  # where a hash is used for a condition are checks made on the HoH.
+  #
+  # A dependent patient makes the HoH reminder eligible if:
+  # - HoH is not purged
+  # - HoH has a usable preferred contact method
+  # - HoH has not paused notifications
+  # - current HoH local time is within the preferred contact time window
+  # - patient has monitoring ON
+  # - patient is not purged
+  # - patient is in isolation
+  #   OR
+  #   patient is in continuous exposure
+  #   OR
+  #   patient last date of exposure is on or after (today - monitoring_period_days)
+  #   OR
+  #   patient last date of exposure is null and created at of exposure is on or after (today - monitoring_period_days)
+  scope :has_eligible_dependents, lambda {
+    joins(:dependents)
+      .where(purged: false)
+      .where(head_of_household: true)
+      .where('patients.id = patients.responder_id')
+      .where(
+        # Ignore any joined rows where the dependents_patients is the HoH itself.
+        'dependents_patients.id != dependents_patients.responder_id'
+      )
+      .has_usable_preferred_contact_method
+      .where(
+        # HoH is unconditionally ineligible if it has paused notifications
+        pause_notifications: false
+      )
+      .where('dependents_patients.monitoring = ?', true)
+      .where('dependents_patients.purged = ?', false)
+      .where(
+        'dependents_patients.isolation = ? '\
+        'OR dependents_patients.continuous_exposure = ? '\
+        'OR dependents_patients.last_date_of_exposure >= DATE_SUB(DATE(CONVERT_TZ(?, "UTC", dependents_patients.time_zone)), INTERVAL ? DAY) '\
+        'OR ('\
+        '  dependents_patients.last_date_of_exposure IS NULL '\
+        '  AND dependents_patients.created_at >= DATE_SUB(DATE(CONVERT_TZ(?, "UTC", dependents_patients.time_zone)), INTERVAL ? DAY)'\
+        ')',
+        true,
+        true,
+        Time.now.getlocal('-00:00'),
+        ADMIN_OPTIONS['monitoring_period_days'],
+        Time.now.getlocal('-00:00'),
+        ADMIN_OPTIONS['monitoring_period_days']
+      )
+      .within_preferred_contact_time
+      .reminder_not_sent_recently
+  }
+
+  # Patients should be monitored are any of the below:
+  # - In isolation
+  # - In continuous exposure
+  # - last date of exposure is on or after (today - monitoring_period_days)
+  #   OR
+  #   last date of exposure is null and created at of exposure is on or after (today - monitoring_period_days)
+  scope :is_being_monitored, lambda {
+    where(
+      'patients.isolation = ? '\
+      'OR patients.continuous_exposure = ? '\
+      'OR patients.last_date_of_exposure >= DATE_SUB(DATE(CONVERT_TZ(?, "UTC", patients.time_zone)), INTERVAL ? DAY) '\
+      'OR ('\
+      '  patients.last_date_of_exposure IS NULL '\
+      '  AND patients.created_at >= DATE_SUB(DATE(CONVERT_TZ(?, "UTC", patients.time_zone)), INTERVAL ? DAY)'\
+      ')',
+      true,
+      true,
+      Time.now.getlocal('-00:00'),
+      ADMIN_OPTIONS['monitoring_period_days'],
+      Time.now.getlocal('-00:00'),
+      ADMIN_OPTIONS['monitoring_period_days']
+    )
+  }
+
+  # A patient has not reported within the reporting period if either:
+  # - last assessment is null
+  # - latest assessment date is before the beginning of the day in patient local
+  #   time for (time now - reporting_period_minutes).beginning of day
+  scope :has_not_reported_recently, lambda {
+    where(
+      # Converting to a timezone, then casting to date effectively gives us
+      # the start of the day in that timezone to make comparisons with.
+      'patients.latest_assessment_at IS NULL OR '\
+      'DATE_ADD('\
+      '    DATE(CONVERT_TZ(patients.latest_assessment_at, "UTC", patients.time_zone)),'\
+      '    INTERVAL ? DAY'\
+      ') < CONVERT_TZ(?, "UTC", patients.time_zone)',
+      # Example: 1 day reporting period => was patient last assessment before midnight today?
+      # Example: 2 day reporting period => was patient last assessment before midnight yesterday?
+      # Example: 7 day reporting period => was patient last assessment before midnight 6 days ago?
+      (ADMIN_OPTIONS['reporting_period_minutes'] / 1440).to_i,
+      Time.now.getlocal('-00:00')
+    )
   }
 
   scope :within_preferred_contact_time, lambda {
@@ -248,6 +411,21 @@ class Patient < ApplicationRecord
         .where('latest_assessment_at < ?', ADMIN_OPTIONS['reporting_period_minutes'].minutes.ago)
         .where('patients.created_at < ?', ADMIN_OPTIONS['reporting_period_minutes'].minutes.ago)
       )
+  }
+
+  # Convert Patient's latest_assessment_at from UTC to the Patient's local time
+  # Is that time after the date (NOT TIME) of now UTC converted to the Patient's time zone
+  # AND they have a latest_assessment_at set.
+  scope :submitted_assessment_today, lambda {
+    where(
+      'CONVERT_TZ(patients.latest_assessment_at, "UTC", patients.time_zone)'\
+      ' >= DATE(CONVERT_TZ(?, "+00:00", patients.time_zone))'\
+      'AND CONVERT_TZ(patients.latest_assessment_at, "UTC", patients.time_zone)'\
+      ' < DATE_ADD(DATE(CONVERT_TZ(?, "+00:00", patients.time_zone)), INTERVAL 1 DAY)',
+      Time.now.getlocal('-00:00'),
+      Time.now.getlocal('-00:00')
+    )
+      .where.not(latest_assessment_at: nil)
   }
 
   # Any individual who is currently under investigation (exposure workflow only)
@@ -493,29 +671,30 @@ class Patient < ApplicationRecord
   }
   # rubocop:enable Style/MultilineBlockChain
 
-  # Gets the current date in the patient's timezone
-  def curr_date_in_timezone
-    Time.now.getlocal(address_timezone_offset)
-  end
-
-  # Checks is at the end of or past their monitoring period
-  def end_of_monitoring_period?
-    return false if continuous_exposure
-
-    monitoring_period_days = ADMIN_OPTIONS['monitoring_period_days'].days
-
-    # If there is a last date of exposure - base monitoring period off of that date
-    monitoring_end_date = if !last_date_of_exposure.nil?
-                            last_date_of_exposure.beginning_of_day + monitoring_period_days
-                          else
-                            # Otherwise, if there is no last date of exposure - base monitoring period off of creation date
-                            created_at.beginning_of_day + monitoring_period_days
-                          end
-
-    # If it is the last day of or past the monitoring period
-    # NOTE: beginning_of_day is used as monitoring period is based of date not the specific time
-    curr_date_in_timezone.beginning_of_day >= monitoring_end_date
-  end
+  # Patients in the exposure workflow have finished their monitoring period IF:
+  # - not in continuous exposure
+  #    AND EITHER
+  # - last exposure date is on or after (today - 'monitoring_period_days') in patient local time
+  #    OR
+  # - last exposure date is null and created date is on or after (today - 'monitoring_period_days') in patient local time
+  scope :end_of_monitoring_period, lambda {
+    where(continuous_exposure: false)
+      .where(
+        '('\
+        '  patients.last_date_of_exposure IS NOT NULL AND '\
+        '  DATE_ADD(patients.last_date_of_exposure, INTERVAL ? DAY)'\
+        '    <= DATE(CONVERT_TZ(?, "UTC", patients.time_zone))'\
+        ') OR ('\
+        '  patients.last_date_of_exposure IS NULL AND '\
+        '  DATE_ADD(DATE(CONVERT_TZ(patients.created_at, "UTC", patients.time_zone)), INTERVAL ? DAY)'\
+        '    <= DATE(CONVERT_TZ(?, "UTC", patients.time_zone))'\
+        ')',
+        ADMIN_OPTIONS['monitoring_period_days'],
+        Time.now.getlocal('-00:00'),
+        ADMIN_OPTIONS['monitoring_period_days'],
+        Time.now.getlocal('-00:00')
+      )
+  }
 
   # Patients are eligible to be automatically closed by the system IF:
   #  - in exposure workflow
@@ -527,15 +706,15 @@ class Patient < ApplicationRecord
   #  - not in continuous exposure
   #     AND
   #  - on the last day of or past their monitoring period
-  def self.close_eligible
+  scope :close_eligible, lambda {
     exposure_asymptomatic
-      .where(continuous_exposure: false)
-      .select do |patient|
-        # Submitted an assessment today AND is at the end of or past their monitoring period
-        (!patient.latest_assessment_at.nil? &&
-          patient.latest_assessment_at.getlocal(patient.address_timezone_offset) >= patient.curr_date_in_timezone.beginning_of_day &&
-          patient.end_of_monitoring_period?)
-      end
+      .submitted_assessment_today
+      .end_of_monitoring_period
+  }
+
+  # Gets the current date in the patient's timezone
+  def curr_date_in_timezone
+    Time.now.getlocal(address_timezone_offset)
   end
 
   # Order individuals based on their public health assigned risk assessment
@@ -640,6 +819,11 @@ class Patient < ApplicationRecord
   # Get this patient's dependents excluding itself
   def dependents_exclude_self
     dependents.where.not(id: id)
+  end
+
+  # Get this patient's household members including itself
+  def household
+    responder&.dependents
   end
 
   # Single place for calculating the end of monitoring date for this subject.
@@ -1061,9 +1245,10 @@ class Patient < ApplicationRecord
   # These side effects are handled in the handle_update function
   def monitoring_history_edit(history_data, diff_state)
     patient_before = history_data[:patient_before]
-    # NOTE: Attributes are sorted so that case_status always comes before isolation, since a case_status change may trigger
-    # an isolation change from the front end, and the case_status message should come first
-    attribute_order = %i[case_status isolation]
+    # NOTE: Attributes are sorted so that:
+    # - case_status always comes before isolation, since a case_status change may trigger an isolation change from the front end
+    # - continuous_exposure comes before last_date_of_exposure, since a continuous_exposure change may trigger an lde change from the front end
+    attribute_order = %i[case_status isolation continuous_exposure last_date_of_exposure]
     history_data[:updates].keys.sort_by { |key| attribute_order.index(key) || Float::INFINITY }&.each do |attribute|
       updated_value = self[attribute]
       next if patient_before[attribute] == updated_value

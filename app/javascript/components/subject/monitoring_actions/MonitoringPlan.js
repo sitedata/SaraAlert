@@ -3,7 +3,9 @@ import { PropTypes } from 'prop-types';
 import { Form, Button, Modal } from 'react-bootstrap';
 import _ from 'lodash';
 import axios from 'axios';
+import ReactTooltip from 'react-tooltip';
 
+import ApplyToHousehold from '../household_actions/ApplyToHousehold';
 import InfoTooltip from '../../util/InfoTooltip';
 import reportError from '../../util/ReportError';
 
@@ -16,7 +18,9 @@ class MonitoringPlan extends React.Component {
       reasoning: '',
       monitoring_plan: props.patient.monitoring_plan || '',
       apply_to_household: false,
+      apply_to_household_ids: [],
       loading: false,
+      noMembersSelected: false,
     };
     this.origState = Object.assign({}, this.state);
   }
@@ -28,14 +32,19 @@ class MonitoringPlan extends React.Component {
     });
   };
 
-  handleApplyHouseholdChange = event => {
-    const applyToHousehold = event.target.id === 'apply_to_household_yes';
-    this.setState({ apply_to_household: applyToHousehold });
-  };
-
   handleReasoningChange = event => {
     let value = event?.target?.value;
     this.setState({ [event.target.id]: value || '' });
+  };
+
+  handleApplyHouseholdChange = apply_to_household => {
+    const noMembersSelected = apply_to_household && this.state.apply_to_household_ids.length === 0;
+    this.setState({ apply_to_household, noMembersSelected });
+  };
+
+  handleApplyHouseholdIdsChange = apply_to_household_ids => {
+    const noMembersSelected = this.state.apply_to_household && apply_to_household_ids.length === 0;
+    this.setState({ apply_to_household_ids, noMembersSelected });
   };
 
   toggleMonitoringPlanModal = () => {
@@ -44,7 +53,9 @@ class MonitoringPlan extends React.Component {
       showMonitoringPlanModal: !current,
       monitoring_plan: this.props.patient.monitoring_plan ? this.props.patient.monitoring_plan : '',
       apply_to_household: false,
+      apply_to_household_ids: [],
       reasoning: '',
+      noMembersSelected: false,
     });
   };
 
@@ -57,13 +68,14 @@ class MonitoringPlan extends React.Component {
           monitoring_plan: this.state.monitoring_plan,
           reasoning: this.state.reasoning,
           apply_to_household: this.state.apply_to_household,
+          apply_to_household_ids: this.state.apply_to_household_ids,
           diffState: diffState,
         })
         .then(() => {
           location.reload(true);
         })
-        .catch(error => {
-          reportError(error);
+        .catch(err => {
+          reportError(err?.response?.data?.error ? err.response.data.error : err, false);
         });
     });
   };
@@ -76,30 +88,14 @@ class MonitoringPlan extends React.Component {
         </Modal.Header>
         <Modal.Body>
           <p>Are you sure you want to change monitoring plan to {this.state.monitoring_plan ? `"${this.state.monitoring_plan}"` : 'blank'}?</p>
-          {this.props.has_dependents && (
-            <React.Fragment>
-              <p className="mb-2">Please select the records that you would like to apply this change to:</p>
-              <Form.Group className="px-4">
-                <Form.Check
-                  type="radio"
-                  className="mb-1"
-                  name="apply_to_household"
-                  id="apply_to_household_no"
-                  label="This monitoree only"
-                  onChange={this.handleApplyHouseholdChange}
-                  checked={!this.state.apply_to_household}
-                />
-                <Form.Check
-                  type="radio"
-                  className="mb-3"
-                  name="apply_to_household"
-                  id="apply_to_household_yes"
-                  label="This monitoree and all household members"
-                  onChange={this.handleApplyHouseholdChange}
-                  checked={this.state.apply_to_household}
-                />
-              </Form.Group>
-            </React.Fragment>
+          {this.props.household_members.length > 0 && (
+            <ApplyToHousehold
+              household_members={this.props.household_members}
+              current_user={this.props.current_user}
+              jurisdiction_paths={this.props.jurisdiction_paths}
+              handleApplyHouseholdChange={this.handleApplyHouseholdChange}
+              handleApplyHouseholdIdsChange={this.handleApplyHouseholdIdsChange}
+            />
           )}
           <Form.Group>
             <Form.Label>Please include any additional details:</Form.Label>
@@ -110,13 +106,20 @@ class MonitoringPlan extends React.Component {
           <Button variant="secondary btn-square" onClick={toggle}>
             Cancel
           </Button>
-          <Button variant="primary btn-square" onClick={submit} disabled={this.state.loading}>
+          <Button variant="primary btn-square" onClick={submit} disabled={this.state.loading || this.state.noMembersSelected}>
             {this.state.loading && (
               <React.Fragment>
                 <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>&nbsp;
               </React.Fragment>
             )}
-            Submit
+            <span data-for="monitoring-plan-submit" data-tip="">
+              Submit
+            </span>
+            {this.state.noMembersSelected && (
+              <ReactTooltip id="monitoring-plan-submit" multiline={true} place="top" type="dark" effect="solid" className="tooltip-container">
+                <div>Please select at least one household member or change your selection to apply to this monitoree only</div>
+              </ReactTooltip>
+            )}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -154,7 +157,9 @@ class MonitoringPlan extends React.Component {
 MonitoringPlan.propTypes = {
   patient: PropTypes.object,
   authenticity_token: PropTypes.string,
-  has_dependents: PropTypes.bool,
+  household_members: PropTypes.array,
+  current_user: PropTypes.object,
+  jurisdiction_paths: PropTypes.object,
 };
 
 export default MonitoringPlan;

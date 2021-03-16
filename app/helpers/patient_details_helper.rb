@@ -45,7 +45,7 @@ module PatientDetailsHelper # rubocop:todo Metrics/ModuleLength
       transferred_at: latest_transfer_at || '',
       reason_for_closure: monitoring_reason || '',
       public_health_action: public_health_action || '',
-      status: status&.to_s&.humanize&.downcase&.gsub('exposure ', '')&.gsub('isolation ', '') || '',
+      status: status&.to_s&.humanize&.downcase&.sub('exposure ', '')&.sub('isolation ', '') || '',
       closed_at: closed_at || '',
       transferred_from: latest_transfer&.from_path || '',
       transferred_to: latest_transfer&.to_path || '',
@@ -157,7 +157,10 @@ module PatientDetailsHelper # rubocop:todo Metrics/ModuleLength
       jurisdiction_path: jurisdiction[:path] || '',
       assigned_user: assigned_user || '',
       gender_identity: gender_identity || '',
-      sexual_orientation: sexual_orientation || ''
+      sexual_orientation: sexual_orientation || '',
+      race_other: race_other || false,
+      race_unknown: race_unknown || false,
+      race_refused_to_answer: race_refused_to_answer || false
     }
   end
 

@@ -49,6 +49,28 @@ class LaboratoryTest < ActiveSupport::TestCase
   #   assert_not laboratory.valid?
   # end
 
+  test 'update patient updated_at upon laboratory create, update, and delete' do
+    patient = create(:patient)
+
+    ActiveRecord::Base.record_timestamps = false
+    patient.update(updated_at: 1.day.ago)
+    ActiveRecord::Base.record_timestamps = true
+    laboratory = create(:laboratory, patient: patient)
+    assert_in_delta patient.updated_at, Time.now.utc, 1
+
+    ActiveRecord::Base.record_timestamps = false
+    patient.update(updated_at: 1.day.ago)
+    ActiveRecord::Base.record_timestamps = true
+    laboratory.update(result: 'negative')
+    assert_in_delta patient.updated_at, Time.now.utc, 1
+
+    ActiveRecord::Base.record_timestamps = false
+    patient.update(updated_at: 1.day.ago)
+    ActiveRecord::Base.record_timestamps = true
+    laboratory.destroy
+    assert_in_delta patient.updated_at, Time.now.utc, 1
+  end
+
   test 'update patient linelist' do
     patient = create(:patient)
 
@@ -89,5 +111,113 @@ class LaboratoryTest < ActiveSupport::TestCase
     assert_nil patient.latest_positive_lab_at
     assert patient.negative_lab_count.zero?
     assert_empty patient.laboratories
+  end
+
+  test 'validates result inclusion' do
+    lab = create(:laboratory)
+
+    lab.result = 'positive'
+    assert lab.valid?
+    lab.result = 'negative'
+    assert lab.valid?
+    lab.result = 'indeterminate'
+    assert lab.valid?
+    lab.result = 'other'
+    assert lab.valid?
+    lab.result = ''
+    assert lab.valid?
+    lab.result = nil
+    assert lab.valid?
+
+    lab.result = 'foo'
+    assert_not lab.valid?
+  end
+
+  test 'validates lab_type inclusion in api and import context' do
+    lab = create(:laboratory)
+
+    lab.lab_type = 'PCR'
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+    lab.lab_type = 'Antigen'
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+    lab.lab_type = 'Total Antibody'
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+    lab.lab_type = 'IgG Antibody'
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+    lab.lab_type = 'IgM Antibody'
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+    lab.lab_type = 'IgA Antibody'
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+    lab.lab_type = 'Other'
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+    lab.lab_type = ''
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+    lab.lab_type = nil
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+
+    lab.lab_type = 'foo'
+    assert_not lab.valid?(:api)
+    assert_not lab.valid?(:import)
+    assert lab.valid?
+  end
+
+  test 'validates specimen_collection is a valid date' do
+    lab = create(:laboratory)
+
+    lab.specimen_collection = Time.now - 1.day
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+
+    lab.specimen_collection = ''
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+
+    lab.specimen_collection = nil
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+
+    lab.specimen_collection = '01-15-2000'
+    assert_not lab.valid?(:api)
+    assert_not lab.valid?(:import)
+
+    lab.specimen_collection = '2000-13-13'
+    assert_not lab.valid?(:api)
+    assert_not lab.valid?(:import)
+    assert lab.valid?
+  end
+
+  test 'validates report is a valid date' do
+    lab = create(:laboratory)
+
+    lab.report = Time.now - 1.day
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+
+    lab.report = ''
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+
+    lab.report = nil
+    assert lab.valid?(:api)
+    assert lab.valid?(:import)
+
+    lab.report = '01-15-2000'
+    assert_not lab.valid?(:api)
+    assert_not lab.valid?(:import)
+    assert lab.valid?
+
+    lab.report = '2000-13-13'
+    assert_not lab.valid?(:api)
+    assert_not lab.valid?(:import)
+    assert lab.valid?
   end
 end

@@ -1,7 +1,8 @@
 import React from 'react';
 import { PropTypes } from 'prop-types';
-import { Spinner, Table, Form, InputGroup, Row, Col } from 'react-bootstrap';
+import { Spinner, Table, Form, InputGroup } from 'react-bootstrap';
 import ReactPaginate from 'react-paginate';
+import ReactTooltip from 'react-tooltip';
 import InfoTooltip from '../util/InfoTooltip';
 
 class CustomTable extends React.Component {
@@ -9,10 +10,21 @@ class CustomTable extends React.Component {
     super(props);
     this.state = {
       tableQuery: {
-        orderBy: '',
-        sortDirection: '',
+        orderBy: props.orderBy,
+        sortDirection: props.sortDirection,
       },
     };
+  }
+
+  componentDidUpdate(prevProps) {
+    if (this.props.sortDirection !== prevProps.sortDirection || this.props.orderBy !== prevProps.orderBy) {
+      this.setState(state => {
+        const sortDirection = this.props.sortDirection;
+        const orderBy = this.props.orderBy;
+        const tableQuery = { ...state.tableQuery, sortDirection, orderBy };
+        return { tableQuery };
+      });
+    }
   }
 
   /**
@@ -63,7 +75,8 @@ class CustomTable extends React.Component {
    * or deselects all rows based on the current selectAll value.
    */
   toggleSelectAll = () => {
-    const selectedRows = this.props.selectAll ? [] : [...Array(this.props.rowData.length).keys()];
+    let selectedRows = this.props.selectAll ? [] : [...Array(this.props.rowData.length).keys()];
+    selectedRows = selectedRows.filter(row => !this.props.disabledRows.includes(row));
     // Call parent handler
     this.props.handleSelect(selectedRows);
   };
@@ -78,6 +91,51 @@ class CustomTable extends React.Component {
     } else if (this.props.isEditable) {
       console.log('Please provide a handler function in component props for editing.');
     }
+  };
+
+  /**
+   * Renders the select all checkbox in the header element
+   * Checkbox is disabled if every entry in rowData is disabled
+   */
+  renderSelectAllCheckbox = () => {
+    return (
+      <th>
+        <input
+          type="checkbox"
+          onChange={this.toggleSelectAll}
+          disabled={this.props.disabledRows.length === this.props.rowData.length}
+          checked={this.props.selectAll}
+          aria-label="Table Select All Rows"></input>
+      </th>
+    );
+  };
+
+  /**
+   * Renders the checkbox in the specified row in the table body
+   * Checkbox is disabled if rowIndex is included in the disabledRows prop
+   * Whether a row should be disabled is determined by the parent component
+   *
+   * @param {Object} rowData - Data for the row the checkbox is being rendered in.
+   * @param {Number} rowIndex - Index of the row the checkbox is being rendered in.
+   */
+  renderRowCheckbox = (rowData, rowIndex) => {
+    return (
+      <td>
+        <span data-for={`table-row-${rowIndex}-tooltip`} data-tip="">
+          <input
+            type="checkbox"
+            disabled={this.props.disabledRows.includes(rowIndex)}
+            aria-label={`Table Select${rowData.name ? ` Monitoree: ${rowData.name}` : ''}${this.props.currentUser ? ` User: ${this.props.currentUser}` : ''}`}
+            checked={(this.props.selectAll && !this.props.disabledRows.includes(rowIndex)) || this.props.selectedRows.includes(rowIndex)}
+            onChange={e => this.handleCheckboxChange(e, rowIndex)}></input>
+        </span>
+        {this.props.disabledRows.includes(rowIndex) && (
+          <ReactTooltip id={`table-row-${rowIndex}-tooltip`} multiline={true} place="right" type="dark" effect="solid" className="tooltip-container">
+            {this.props.disabledTooltipText}
+          </ReactTooltip>
+        )}
+      </td>
+    );
   };
 
   /**
@@ -138,25 +196,26 @@ class CustomTable extends React.Component {
             <Spinner variant="secondary" animation="border" size="lg" />
           </div>
         )}
-        <div className={this.props.getCustomTableClassName ? `table-responsive ${this.props.getCustomTableClassName()}` : 'table-responsive'}>
+        <div
+          className={
+            this.props.getCustomTableClassName ? `table-responsive custom-table ${this.props.getCustomTableClassName()}` : 'table-responsive custom-table'
+          }>
           <Table striped bordered hover size="sm" className="opaque-table">
             <thead>
               <tr>
+                {this.props.isSelectable && this.props.checkboxColumnLocation === 'left' && this.renderSelectAllCheckbox()}
                 {this.props.columnData.map(data => {
                   return this.renderTableHeader(data.field, data.label, data.isSortable, data.tooltip, data.icon, data.colWidth);
                 })}
                 {this.props.isEditable && <th>Edit</th>}
-                {this.props.isSelectable && (
-                  <th>
-                    <input type="checkbox" onChange={this.toggleSelectAll} checked={this.props.selectAll} aria-label="Table Select All Rows"></input>
-                  </th>
-                )}
+                {this.props.isSelectable && this.props.checkboxColumnLocation === 'right' && this.renderSelectAllCheckbox()}
               </tr>
             </thead>
             <tbody>
               {this.props.rowData?.map((rowData, rowIndex) => {
                 return (
                   <tr key={rowIndex} id={rowData.id ? rowData.id : rowIndex} className={this.props.getRowClassName ? this.props.getRowClassName(rowData) : ''}>
+                    {this.props.isSelectable && this.props.checkboxColumnLocation === 'left' && this.renderRowCheckbox(rowData, rowIndex)}
                     {Object.values(this.props.columnData).map((colData, colIndex) => {
                       let value = rowData[colData.field];
                       if (colData.options) {
@@ -181,23 +240,13 @@ class CustomTable extends React.Component {
                         </div>
                       </td>
                     )}
-                    {this.props.isSelectable && (
-                      <td>
-                        <input
-                          type="checkbox"
-                          aria-label={`Table Select${rowData.name ? ` Monitoree: ${rowData.name}` : ''}${
-                            this.props.currentUser ? ` User: ${this.props.currentUser}` : ''
-                          }`}
-                          checked={this.props.selectAll || this.props.selectedRows.includes(rowIndex)}
-                          onChange={e => this.handleCheckboxChange(e, rowIndex)}></input>
-                      </td>
-                    )}
+                    {this.props.isSelectable && this.props.checkboxColumnLocation === 'right' && this.renderRowCheckbox(rowData, rowIndex)}
                   </tr>
                 );
               })}
               {!this.props.rowData?.length && (
                 <tr>
-                  <td colSpan={this.props.columnData?.length} className="text-center">
+                  <td colSpan={this.props.columnData?.length + (this.props.isEditable ? 0 : 1) + (this.props.isSelectable ? 0 : 1)} className="text-center">
                     No data available in table.
                   </td>
                 </tr>
@@ -205,10 +254,10 @@ class CustomTable extends React.Component {
             </tbody>
           </Table>
         </div>
-        <div className="d-flex justify-content-between">
-          <Form inline className="align-middle">
-            <Row className="fixed-row-size">
-              <Col>
+        {this.props.showPagination && (
+          <div id="pagination-container" className="row-container">
+            <div className="left-container">
+              <div className="left-box-1">
                 <InputGroup>
                   <InputGroup.Prepend>
                     <InputGroup.Text className="rounded-0">
@@ -232,38 +281,43 @@ class CustomTable extends React.Component {
                     })}
                   </Form.Control>
                 </InputGroup>
-              </Col>
-              <span className="ml-2 text-nowrap align-self-center">{`Displaying ${this.props.rowData.length} out of ${this.props.totalRows} rows.`}</span>
-            </Row>
-          </Form>
-          {this.props.totalRows > 0 && (
-            <ReactPaginate
-              className=""
-              disableInitialCallback={true}
-              pageCount={Math.ceil(this.props.totalRows / this.props.entries)}
-              pageRangeDisplayed={4}
-              marginPagesDisplayed={1}
-              initialPage={this.props.page}
-              forcePage={this.props.page}
-              onPageChange={this.props.handlePageUpdate}
-              previousLabel="Previous"
-              nextLabel="Next"
-              breakLabel="..."
-              containerClassName="pagination mb-0"
-              activeClassName="active"
-              disabledClassName="disabled"
-              pageClassName="paginate_button page-item"
-              previousClassName="paginate_button page-item"
-              nextClassName="paginate_button page-item"
-              breakClassName="paginate_button page-item"
-              pageLinkClassName="page-link text-primary"
-              previousLinkClassName={this.props.page === 0 ? 'page-link' : 'page-link text-primary'}
-              nextLinkClassName={this.props.page === Math.ceil(this.props.totalRows / this.props.entries) - 1 ? 'page-link' : 'page-link text-primary'}
-              activeLinkClassName="page-link text-light"
-              breakLinkClassName="page-link text-primary"
-            />
-          )}
-        </div>
+              </div>
+              <div className="left-box-2">
+                <span className="ml-0 ml-md-2 text-nowrap align-self-center">{`Displaying ${this.props.rowData.length} out of ${this.props.totalRows} rows.`}</span>
+              </div>
+            </div>
+            <div className="right-container">
+              {this.props.totalRows > 0 && (
+                <div style={{ float: 'right' }}>
+                  <ReactPaginate
+                    disableInitialCallback={true}
+                    pageCount={Math.ceil(this.props.totalRows / this.props.entries)}
+                    pageRangeDisplayed={4}
+                    marginPagesDisplayed={1}
+                    initialPage={this.props.page}
+                    forcePage={this.props.page}
+                    onPageChange={this.props.handlePageUpdate}
+                    previousLabel="Previous"
+                    nextLabel="Next"
+                    breakLabel="..."
+                    containerClassName="pagination mb-0"
+                    activeClassName="active"
+                    disabledClassName="disabled"
+                    pageClassName="paginate_button page-item"
+                    previousClassName="paginate_button page-item"
+                    nextClassName="paginate_button page-item"
+                    breakClassName="paginate_button page-item"
+                    pageLinkClassName="page-link text-primary"
+                    previousLinkClassName={this.props.page === 0 ? 'page-link' : 'page-link text-primary'}
+                    nextLinkClassName={this.props.page === Math.ceil(this.props.totalRows / this.props.entries) - 1 ? 'page-link' : 'page-link text-primary'}
+                    activeLinkClassName="page-link text-light"
+                    breakLinkClassName="page-link text-primary"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </React.Fragment>
     );
   }
@@ -277,6 +331,10 @@ CustomTable.propTypes = {
   selectAll: PropTypes.bool,
   isEditable: PropTypes.bool,
   isSelectable: PropTypes.bool,
+  disabledRows: PropTypes.array,
+  disabledTooltipText: PropTypes.string,
+  checkboxColumnLocation: PropTypes.string,
+  showPagination: PropTypes.bool,
   handleEdit: PropTypes.func,
   handleTableUpdate: PropTypes.func,
   handleSelect: PropTypes.func,
@@ -290,12 +348,19 @@ CustomTable.propTypes = {
   getRowClassName: PropTypes.func,
   getCustomTableClassName: PropTypes.func,
   currentUser: PropTypes.string,
+  orderBy: PropTypes.string,
+  sortDirection: PropTypes.string,
 };
 
 CustomTable.defaultProps = {
   handleEdit: () => {},
   handleTableUpdate: () => {},
   handleSelect: () => {},
+  orderBy: '',
+  sortDirection: '',
+  disabledRows: [],
+  showPagination: true,
+  checkboxColumnLocation: 'right',
 };
 
 export default CustomTable;

@@ -43,7 +43,8 @@ class AssessmentTable extends React.Component {
       cancelToken: axios.CancelToken.source(),
       isLoading: false,
       editRow: null,
-      showAssessmentModal: false,
+      showEditAssessmentModal: false,
+      showAddAssessmentModal: false,
     };
   }
 
@@ -198,7 +199,7 @@ class AssessmentTable extends React.Component {
    * @param {SyntheticEvent} event - Event when num entries changes
    */
   handleEntriesChange = event => {
-    const value = event.target.value;
+    const value = parseInt(event.target.value);
     this.setState(
       state => {
         return {
@@ -230,8 +231,8 @@ class AssessmentTable extends React.Component {
   };
 
   /**
-   * Called when the Add User button is clicked.
-   * Updates the state to show the appropriate modal for adding a user.
+   * Called when the Add New Report button is clicked.
+   * Updates the state to show the appropriate modal for adding a new report.
    */
   handleAddReportClick = () => {
     this.setState({
@@ -249,7 +250,7 @@ class AssessmentTable extends React.Component {
   };
 
   /**
-   * Called when the Add User button is clicked.
+   * Called when the Edit Report button is clicked.
    * Updates the state to show the appropriate modal for adding a user.
    */
   handleEditReportClick = row => {
@@ -296,7 +297,7 @@ class AssessmentTable extends React.Component {
           <i className="fas fa-cogs fw"></i>
         </Dropdown.Toggle>
         <Dropdown.Menu className="test-class" drop={'up'}>
-          <Dropdown.Item className="px-4 hi" onClick={() => this.handleEditReportClick(rowIndex)}>
+          <Dropdown.Item id={`report-edit-button-${rowData.id}`} className="px-4 hi" onClick={() => this.handleEditReportClick(rowIndex)}>
             <i className="fas fa-edit fa-fw"></i>
             <span className="ml-2">Edit</span>
           </Dropdown.Item>
@@ -365,14 +366,15 @@ class AssessmentTable extends React.Component {
                   entryOptions={this.state.entryOptions}
                   entries={this.state.query.entries}
                   getRowClassName={this.getRowClassName}
-                  getCustomTableClassName={() => 'reports-table'}
                 />
               </div>
             </div>
             <LastDateExposure
               authenticity_token={this.props.authenticity_token}
               patient={this.props.patient}
-              is_household_member={this.props.is_household_member}
+              current_user={this.props.current_user}
+              jurisdiction_paths={this.props.jurisdiction_paths}
+              household_members={this.props.household_members}
               monitoring_period_days={this.props.monitoring_period_days}
             />
           </Card.Body>
@@ -419,7 +421,7 @@ AssessmentTable.propTypes = {
   patient: PropTypes.object,
   symptoms: PropTypes.array,
   threshold_condition_hash: PropTypes.string,
-  is_household_member: PropTypes.bool,
+  household_members: PropTypes.array,
   report_eligibility: PropTypes.object,
   patient_status: PropTypes.string,
   calculated_age: PropTypes.number,
@@ -428,6 +430,7 @@ AssessmentTable.propTypes = {
   current_user: PropTypes.object,
   translations: PropTypes.object,
   authenticity_token: PropTypes.string,
+  jurisdiction_paths: PropTypes.object,
 };
 
 export default AssessmentTable;

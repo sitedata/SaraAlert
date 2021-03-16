@@ -67,8 +67,7 @@ module FhirHelper # rubocop:todo Metrics/ModuleLength
         ) : nil
       ].reject(&:nil?),
       extension: [
-        to_us_core_race(patient.white, patient.black_or_african_american, patient.american_indian_or_alaska_native,
-                        patient.asian, patient.native_hawaiian_or_other_pacific_islander),
+        to_us_core_race(races_as_hash(patient)),
         to_us_core_ethnicity(patient.ethnicity),
         to_us_core_birthsex(patient.sex),
         to_string_extension(patient.preferred_contact_method, 'preferred-contact-method'),
@@ -87,9 +86,23 @@ module FhirHelper # rubocop:todo Metrics/ModuleLength
         to_date_extension(patient.date_of_arrival, 'date-of-arrival'),
         to_string_extension(patient.exposure_notes, 'exposure-notes'),
         to_string_extension(patient.travel_related_notes, 'travel-related-notes'),
-        to_string_extension(patient.additional_planned_travel_related_notes, 'additional-planned-travel-notes')
+        to_string_extension(patient.additional_planned_travel_related_notes, 'additional-planned-travel-notes'),
+        to_bool_extension(patient.continuous_exposure, 'continuous-exposure')
       ].reject(&:nil?)
     )
+  end
+
+  def races_as_hash(patient)
+    {
+      white: patient.white,
+      black_or_african_american: patient.black_or_african_american,
+      american_indian_or_alaska_native: patient.american_indian_or_alaska_native,
+      asian: patient.asian,
+      native_hawaiian_or_other_pacific_islander: patient.native_hawaiian_or_other_pacific_islander,
+      race_other: patient.race_other,
+      race_unknown: patient.race_unknown,
+      race_refused_to_answer: patient.race_refused_to_answer
+    }
   end
 
   # Create a hash of atttributes that corresponds to a Sara Alert Patient (and can be used to
@@ -129,11 +142,14 @@ module FhirHelper # rubocop:todo Metrics/ModuleLength
       foreign_address_country: foreign_address&.country,
       primary_language: patient&.communication&.first&.language&.coding&.first&.display,
       interpretation_required: patient&.communication&.first&.preferred,
-      white: race_code?(patient, '2106-3'),
-      black_or_african_american: race_code?(patient, '2054-5'),
-      american_indian_or_alaska_native: race_code?(patient, '1002-5'),
-      asian: race_code?(patient, '2028-9'),
-      native_hawaiian_or_other_pacific_islander: race_code?(patient, '2076-8'),
+      white: race_code?(patient, '2106-3', 'ombCategory', false),
+      black_or_african_american: race_code?(patient, '2054-5', 'ombCategory', false),
+      american_indian_or_alaska_native: race_code?(patient, '1002-5', 'ombCategory', false),
+      asian: race_code?(patient, '2028-9', 'ombCategory', false),
+      native_hawaiian_or_other_pacific_islander: race_code?(patient, '2076-8', 'ombCategory', false),
+      race_other: race_code?(patient, '2131-1', 'detailed', false),
+      race_unknown: race_code?(patient, 'unknown', 'http://hl7.org/fhir/StructureDefinition/data-absent-reason', true),
+      race_refused_to_answer: race_code?(patient, 'asked-declined', 'http://hl7.org/fhir/StructureDefinition/data-absent-reason', true),
       ethnicity: from_us_core_ethnicity(patient),
       sex: from_us_core_birthsex(patient),
       preferred_contact_method: from_string_extension(patient, 'preferred-contact-method'),
@@ -141,7 +157,7 @@ module FhirHelper # rubocop:todo Metrics/ModuleLength
       symptom_onset: symptom_onset,
       user_defined_symptom_onset: !symptom_onset.nil?,
       last_date_of_exposure: from_date_extension(patient, %w[last-date-of-exposure last-exposure-date]),
-      isolation: from_isolation_extension(patient),
+      isolation: from_bool_extension(patient, 'isolation') || false,
       jurisdiction_id: from_full_assigned_jurisdiction_path_extension(patient, default_jurisdiction_id),
       monitoring_plan: from_string_extension(patient, 'monitoring-plan'),
       assigned_user: from_positive_integer_extension(patient, 'assigned-user'),
@@ -156,58 +172,74 @@ module FhirHelper # rubocop:todo Metrics/ModuleLength
       additional_planned_travel_related_notes: from_string_extension(patient, 'additional-planned-travel-notes'),
       primary_telephone_type: from_primary_phone_type_extension(patient),
       secondary_telephone_type: from_secondary_phone_type_extension(patient),
-      user_defined_id_statelocal: from_statelocal_id_extension(patient)
+      user_defined_id_statelocal: from_statelocal_id_extension(patient),
+      continuous_exposure: from_bool_extension(patient, 'continuous-exposure') || false
     }
   end
 
   # Build a FHIR US Core Race Extension given Sara Alert race booleans.
-  def to_us_core_race(white, black_or_african_american, american_indian_or_alaska_native, asian, native_hawaiian_or_other_pacific_islander)
+  def to_us_core_race(races)
     # Don't return an extension if all race categories are false or nil
-    return nil unless [white, black_or_african_american, american_indian_or_alaska_native, asian, native_hawaiian_or_other_pacific_islander].include?(true)
+    return nil unless races.values.include?(true)
 
     # Build out extension based on what race categories are true
     FHIR::Extension.new(url: 'http://hl7.org/fhir/us/core/StructureDefinition/us-core-race', extension: [
-      white ? FHIR::Extension.new(
+      races[:white] ? FHIR::Extension.new(
         url: 'ombCategory',
         valueCoding: FHIR::Coding.new(code: '2106-3', system: 'urn:oid:2.16.840.1.113883.6.238', display: 'White')
       ) : nil,
-      black_or_african_american ? FHIR::Extension.new(
+      races[:black_or_african_american] ? FHIR::Extension.new(
         url: 'ombCategory',
         valueCoding: FHIR::Coding.new(code: '2054-5', system: 'urn:oid:2.16.840.1.113883.6.238', display: 'Black or African American')
       ) : nil,
-      american_indian_or_alaska_native ? FHIR::Extension.new(
+      races[:american_indian_or_alaska_native] ? FHIR::Extension.new(
         url: 'ombCategory',
         valueCoding: FHIR::Coding.new(code: '1002-5', system: 'urn:oid:2.16.840.1.113883.6.238', display: 'American Indian or Alaska Native')
       ) : nil,
-      asian ? FHIR::Extension.new(
+      races[:asian] ? FHIR::Extension.new(
         url: 'ombCategory',
         valueCoding: FHIR::Coding.new(code: '2028-9', system: 'urn:oid:2.16.840.1.113883.6.238', display: 'Asian')
       ) : nil,
-      native_hawaiian_or_other_pacific_islander ? FHIR::Extension.new(
+      races[:native_hawaiian_or_other_pacific_islander] ? FHIR::Extension.new(
         url: 'ombCategory',
         valueCoding: FHIR::Coding.new(code: '2076-8', system: 'urn:oid:2.16.840.1.113883.6.238', display: 'Native Hawaiian or Other Pacific Islander')
       ) : nil,
+      races[:race_other] ? FHIR::Extension.new(
+        url: 'detailed',
+        valueCoding: FHIR::Coding.new(code: '2131-1', system: 'urn:oid:2.16.840.1.113883.6.238', display: 'Other Race')
+      ) : nil,
+      races[:race_unknown] ? FHIR::Extension.new(
+        url: 'http://hl7.org/fhir/StructureDefinition/data-absent-reason',
+        valueCode: 'unknown'
+      ) : nil,
+      races[:race_refused_to_answer] ? FHIR::Extension.new(
+        url: 'http://hl7.org/fhir/StructureDefinition/data-absent-reason',
+        valueCode: 'asked-declined'
+      ) : nil,
       FHIR::Extension.new(
         url: 'text',
-        valueString: [white ? 'White' : nil,
-                      black_or_african_american ? 'Black or African American' : nil,
-                      american_indian_or_alaska_native ? 'American Indian or Alaska Native' : nil,
-                      asian ? 'Asian' : nil,
-                      native_hawaiian_or_other_pacific_islander ? 'Native Hawaiian or Other Pacific Islander' : nil].reject(&:nil?).join(', ')
+        valueString: [races[:white] ? 'White' : nil,
+                      races[:black_or_african_american] ? 'Black or African American' : nil,
+                      races[:american_indian_or_alaska_native] ? 'American Indian or Alaska Native' : nil,
+                      races[:asian] ? 'Asian' : nil,
+                      races[:native_hawaiian_or_other_pacific_islander] ? 'Native Hawaiian or Other Pacific Islander' : nil,
+                      races[:race_unknown] ? 'Unknown' : nil,
+                      races[:race_other] ? 'Other' : nil,
+                      races[:race_refused_to_answer] ? 'Refused to Answer' : nil].reject(&:nil?).join(', ')
       )
     ].reject(&:nil?))
   end
 
   # Return a boolean indicating if the given race code is present on the given FHIR::Patient.
-  def race_code?(patient, code)
-    url = 'us-core-race'
-    patient&.extension&.select { |e| e.url.include?(url) }&.first&.extension&.select { |e| e.url == 'ombCategory' }&.any? { |e| e&.valueCoding&.code == code }
+  def race_code?(patient, code, url, absent)
+    race_extension = patient&.extension&.select { |e| e&.url&.include?('us-core-race') }&.first&.extension
+    race_extension&.select { |e| e&.url == url }&.any? { |e| (absent ? e&.valueCode : e&.valueCoding&.code) == code }
   end
 
   # Build a FHIR US Core Ethnicity Extension given Sara Alert ethnicity information.
   def to_us_core_ethnicity(ethnicity)
     # Don't return an extension if no ethnicity specified
-    return nil unless ['Hispanic or Latino', 'Not Hispanic or Latino'].include?(ethnicity)
+    return nil unless ValidationHelper::VALID_PATIENT_ENUMS[:ethnicity].include?(ethnicity)
 
     # Build out extension based on what ethnicity was specified
     FHIR::Extension.new(url: 'http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity', extension: [
@@ -219,6 +251,14 @@ module FhirHelper # rubocop:todo Metrics/ModuleLength
                             url: 'ombCategory',
                             valueCoding: FHIR::Coding.new(code: '2186-5', system: 'urn:oid:2.16.840.1.113883.6.238', display: 'Not Hispanic or Latino')
                           ) : nil,
+                          ethnicity == 'Unknown' ? FHIR::Extension.new(
+                            url: 'http://hl7.org/fhir/StructureDefinition/data-absent-reason',
+                            valueCode: 'unknown'
+                          ) : nil,
+                          ethnicity == 'Refused to Answer' ? FHIR::Extension.new(
+                            url: 'http://hl7.org/fhir/StructureDefinition/data-absent-reason',
+                            valueCode: 'asked-declined'
+                          ) : nil,
                           FHIR::Extension.new(
                             url: 'text',
                             valueString: ethnicity
@@ -228,10 +268,13 @@ module FhirHelper # rubocop:todo Metrics/ModuleLength
 
   # Return a string representing the ethnicity of the given FHIR::Patient
   def from_us_core_ethnicity(patient)
-    url = 'us-core-ethnicity'
-    code = patient&.extension&.select { |e| e.url.include?(url) }&.first&.extension&.select { |e| e.url == 'ombCategory' }&.first&.valueCoding&.code
+    urls = %w[ombCategory http://hl7.org/fhir/StructureDefinition/data-absent-reason]
+    ethnicity = patient&.extension&.select { |e| e.url.include?('us-core-ethnicity') }&.first&.extension&.select { |e| urls.include?(e.url) }&.first
+    code = ethnicity&.valueCoding&.code || ethnicity&.valueCode
     return 'Hispanic or Latino' if code == '2135-2'
     return 'Not Hispanic or Latino' if code == '2186-5'
+    return 'Unknown' if code == 'unknown'
+    return 'Refused to Answer' if code == 'asked-declined'
 
     code
   end
@@ -262,9 +305,9 @@ module FhirHelper # rubocop:todo Metrics/ModuleLength
     PatientHelper.languages(language&.downcase) ? FHIR::Coding.new(**PatientHelper.languages(language&.downcase)) : nil
   end
 
-  # Helper to understand an extension for isolation status
-  def from_isolation_extension(patient)
-    patient&.extension&.select { |e| e.url.include?('isolation') }&.first&.valueBoolean == true
+  # Helper to understand a boolean extension
+  def from_bool_extension(patient, extension_id)
+    patient&.extension&.find { |e| e.url.include?(extension_id) }&.valueBoolean
   end
 
   def to_bool_extension(value, extension_id)

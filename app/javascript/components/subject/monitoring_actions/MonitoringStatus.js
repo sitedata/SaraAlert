@@ -4,7 +4,9 @@ import { Form, Button, Modal } from 'react-bootstrap';
 import _ from 'lodash';
 import axios from 'axios';
 import moment from 'moment';
+import ReactTooltip from 'react-tooltip';
 
+import ApplyToHousehold from '../household_actions/ApplyToHousehold';
 import DateInput from '../../util/DateInput';
 import InfoTooltip from '../../util/InfoTooltip';
 import reportError from '../../util/ReportError';
@@ -19,7 +21,9 @@ class MonitoringStatus extends React.Component {
       monitoring_reason: '',
       reasoning: '',
       loading: false,
+      noMembersSelected: false,
       apply_to_household: false,
+      apply_to_household_ids: [],
       apply_to_household_cm_exp_only: false,
       apply_to_household_cm_exp_only_date: moment(new Date()).format('YYYY-MM-DD'),
     };
@@ -33,17 +37,19 @@ class MonitoringStatus extends React.Component {
     });
   };
 
-  handleApplyHouseholdChange = event => {
-    if (event?.target?.name && event.target.name === 'apply_to_household') {
-      const applyToGroup = event.target.id === 'apply_to_household_yes';
-      this.setState({
-        apply_to_household: applyToGroup,
-        apply_to_household_cm_exp_only: false,
-      });
-    } else if (event?.target?.name && event.target.name === 'apply_to_household_cm_exp_only') {
-      const applyToGroup = event.target.id === 'apply_to_household_cm_exp_only_yes';
-      this.setState({ apply_to_household_cm_exp_only: applyToGroup });
-    }
+  handleApplyHouseholdChange = apply_to_household => {
+    const noMembersSelected = apply_to_household && this.state.apply_to_household_ids.length === 0;
+    this.setState({ apply_to_household, apply_to_household_cm_exp_only: false, noMembersSelected });
+  };
+
+  handleApplyHouseholdIdsChange = apply_to_household_ids => {
+    const noMembersSelected = this.state.apply_to_household && apply_to_household_ids.length === 0;
+    this.setState({ apply_to_household_ids, noMembersSelected });
+  };
+
+  handleApplyLdeChange = event => {
+    const applyToGroup = event.target.id === 'apply_to_household_cm_exp_only_yes';
+    this.setState({ apply_to_household_cm_exp_only: applyToGroup });
   };
 
   handleChange = event => {
@@ -60,8 +66,10 @@ class MonitoringStatus extends React.Component {
       monitoring_reason: '',
       reasoning: '',
       apply_to_household: false,
+      apply_to_household_ids: [],
       apply_to_household_cm_exp_only: false,
       apply_to_household_cm_exp_only_date: moment(new Date()).format('YYYY-MM-DD'),
+      noMembersSelected: false,
     });
   };
 
@@ -78,6 +86,7 @@ class MonitoringStatus extends React.Component {
               ? this.state.monitoring_reason + (this.state.reasoning !== '' ? ', ' : '')
               : '') + this.state.reasoning,
           apply_to_household: this.state.apply_to_household,
+          apply_to_household_ids: this.state.apply_to_household_ids,
           apply_to_household_cm_exp_only: this.state.apply_to_household_cm_exp_only,
           apply_to_household_cm_exp_only_date: this.state.apply_to_household_cm_exp_only_date,
           diffState: diffState,
@@ -85,13 +94,16 @@ class MonitoringStatus extends React.Component {
         .then(() => {
           location.reload(true);
         })
-        .catch(error => {
-          reportError(error);
+        .catch(err => {
+          reportError(err?.response?.data?.error ? err.response.data.error : err, false);
         });
     });
   };
 
   createModal(toggle, submit) {
+    const householdMemberWithContinuousExposureInExposureWorkflow =
+      this.props.household_members.filter(member => member.continuous_exposure && !member.isolation).length > 0;
+
     return (
       <Modal size="lg" show centered onHide={toggle}>
         <Modal.Header>
@@ -103,32 +115,14 @@ class MonitoringStatus extends React.Component {
             {!this.state.monitoring && <b> This will move the selected record(s) to the Closed line list and turn Continuous Exposure OFF.</b>}
             {this.state.monitoring && <b> This will move the selected record(s) from the Closed line list to the appropriate Active Monitoring line list.</b>}
           </p>
-          {this.props.has_dependents && (
-            <React.Fragment>
-              <p className="mb-2">Please select the records that you would like to apply this change to:</p>
-              <Form.Group className="px-4">
-                <Form.Check
-                  type="radio"
-                  className="mb-1"
-                  name="apply_to_household"
-                  id="apply_to_household_no"
-                  label="This monitoree only"
-                  onChange={this.handleApplyHouseholdChange}
-                  checked={!this.state.apply_to_household}
-                />
-                <Form.Check
-                  type="radio"
-                  className="mb-3"
-                  name="apply_to_household"
-                  id="apply_to_household_yes"
-                  label={`This monitoree and all household members ${
-                    this.state.monitoring ? '' : '(this will turn Continuous Exposure OFF for all household members)'
-                  }`}
-                  onChange={this.handleApplyHouseholdChange}
-                  checked={this.state.apply_to_household}
-                />
-              </Form.Group>
-            </React.Fragment>
+          {this.props.household_members.length > 0 && (
+            <ApplyToHousehold
+              household_members={this.props.household_members}
+              current_user={this.props.current_user}
+              jurisdiction_paths={this.props.jurisdiction_paths}
+              handleApplyHouseholdChange={this.handleApplyHouseholdChange}
+              handleApplyHouseholdIdsChange={this.handleApplyHouseholdIdsChange}
+            />
           )}
           {!this.state.monitoring && (
             <Form.Group>
@@ -147,7 +141,7 @@ class MonitoringStatus extends React.Component {
             <Form.Label>Please include any additional details:</Form.Label>
             <Form.Control as="textarea" rows="2" id="reasoning" onChange={this.handleChange} aria-label="Additional Details Text Area" />
           </Form.Group>
-          {this.props.patient.isolation && !this.state.monitoring && this.props.in_household_with_member_with_ce_in_exposure && !this.state.apply_to_household && (
+          {this.props.patient.isolation && !this.state.monitoring && householdMemberWithContinuousExposureInExposureWorkflow && !this.state.apply_to_household && (
             <div className="update-dependent-lde">
               <hr />
               <p className="mb-2">
@@ -161,7 +155,7 @@ class MonitoringStatus extends React.Component {
                   name="apply_to_household_cm_exp_only"
                   id="apply_to_household_cm_exp_only_no"
                   label="No, household members still have continuous exposure to another case"
-                  onChange={this.handleApplyHouseholdChange}
+                  onChange={this.handleApplyLdeChange}
                   checked={!this.state.apply_to_household_cm_exp_only}
                 />
                 <Form.Check>
@@ -170,7 +164,7 @@ class MonitoringStatus extends React.Component {
                       type="radio"
                       name="apply_to_household_cm_exp_only"
                       id="apply_to_household_cm_exp_only_yes"
-                      onChange={this.handleApplyHouseholdChange}
+                      onChange={this.handleApplyLdeChange}
                       checked={this.state.apply_to_household_cm_exp_only}
                     />
                     <p className="mb-1">Yes, household members are no longer being exposed to a case</p>
@@ -203,13 +197,20 @@ class MonitoringStatus extends React.Component {
           <Button variant="secondary btn-square" onClick={toggle}>
             Cancel
           </Button>
-          <Button variant="primary btn-square" onClick={submit} disabled={this.state.loading}>
+          <Button variant="primary btn-square" onClick={submit} disabled={this.state.loading || this.state.noMembersSelected}>
             {this.state.loading && (
               <React.Fragment>
                 <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>&nbsp;
               </React.Fragment>
             )}
-            Submit
+            <span data-for="monitoring-status-submit" data-tip="">
+              Submit
+            </span>
+            {this.state.noMembersSelected && (
+              <ReactTooltip id="monitoring-status-submit" multiline={true} place="top" type="dark" effect="solid" className="tooltip-container">
+                <div>Please select at least one household member or change your selection to apply to this monitoree only</div>
+              </ReactTooltip>
+            )}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -243,9 +244,10 @@ class MonitoringStatus extends React.Component {
 MonitoringStatus.propTypes = {
   patient: PropTypes.object,
   authenticity_token: PropTypes.string,
-  has_dependents: PropTypes.bool,
-  in_household_with_member_with_ce_in_exposure: PropTypes.bool,
+  household_members: PropTypes.array,
   monitoring_reasons: PropTypes.array,
+  current_user: PropTypes.object,
+  jurisdiction_paths: PropTypes.object,
 };
 
 export default MonitoringStatus;

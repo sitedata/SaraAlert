@@ -10,9 +10,10 @@ class PublicHealthMonitoringImportVerifier < ApplicationSystemTestCase
   @@system_test_utils = SystemTestUtils.new(nil)
 
   TELEPHONE_FIELDS = %i[primary_telephone secondary_telephone].freeze
-  BOOL_FIELDS = %i[white black_or_african_american american_indian_or_alaska_native asian native_hawaiian_or_other_pacific_islander interpretation_required
-                   contact_of_known_case travel_to_affected_country_or_area was_in_health_care_facility_with_known_cases laboratory_personnel
-                   healthcare_personnel crew_on_passenger_or_cargo_flight member_of_a_common_exposure_cohort].freeze
+  BOOL_FIELDS = %i[white black_or_african_american american_indian_or_alaska_native asian native_hawaiian_or_other_pacific_islander race_other race_unknown
+                   race_refused_to_answer interpretation_required contact_of_known_case travel_to_affected_country_or_area
+                   was_in_health_care_facility_with_known_cases laboratory_personnel healthcare_personnel crew_on_passenger_or_cargo_flight
+                   member_of_a_common_exposure_cohort].freeze
   STATE_FIELDS = %i[address_state foreign_monitored_address_state additional_planned_travel_destination_state].freeze
   MONITORED_ADDRESS_FIELDS = %i[monitored_address_line_1 monitored_address_city monitored_address_state monitored_address_line_2 monitored_address_zip].freeze
   # TODO: when workflow specific case status validation re-enabled: take out 'case_status'
@@ -211,7 +212,7 @@ class PublicHealthMonitoringImportVerifier < ApplicationSystemTestCase
       #   assert page.has_content?("Required field '#{VALIDATION[field][:label]}' is missing"), "Error message for #{field}"
       # end
       if value && !value.blank? && VALIDATION[field][:checks].include?(:enum) && !NORMALIZED_ENUMS[field].keys.include?(normalize_enum_field_value(value))
-        assert page.has_content?("'#{value}' is not an acceptable value for '#{VALIDATION[field][:label]}'"), "Error message for #{field} missing"
+        assert page.has_content?("Value '#{value}' for '#{VALIDATION[field][:label]}' is not an acceptable value"), "Error message for #{field} missing"
       end
       # TODO: when workflow specific case status validation re-enabled: uncomment
       # if value && !value.blank? && WORKFLOW_SPECIFIC_FIELDS.include?(field)
@@ -222,17 +223,17 @@ class PublicHealthMonitoringImportVerifier < ApplicationSystemTestCase
       #   end
       # end
       if value && !value.blank? && VALIDATION[field][:checks].include?(:bool) && !%w[true false].include?(value.to_s.downcase)
-        assert page.has_content?("'#{value}' is not an acceptable value for '#{VALIDATION[field][:label]}'"), "Error message for #{field} missing"
+        assert page.has_content?("Value '#{value}' for '#{VALIDATION[field][:label]}' is not an acceptable value"), "Error message for #{field} missing"
       end
       if value && !value.blank? && VALIDATION[field][:checks].include?(:date) && !value.instance_of?(Date) && value.match(/\d{4}-\d{2}-\d{2}/)
         begin
           Date.parse(value)
         rescue ArgumentError
-          assert page.has_content?("'#{value}' is not a valid date for '#{VALIDATION[field][:label]}'"), "Error message for #{field} missing"
+          assert page.has_content?("Value '#{value}' for '#{VALIDATION[field][:label]}' is not a valid date"), "Error message for #{field} missing"
         end
       end
       if value && !value.blank? && VALIDATION[field][:checks].include?(:date) && !value.instance_of?(Date) && !value.match(/\d{4}-\d{2}-\d{2}/)
-        generic_msg = "'#{value}' is not a valid date for '#{VALIDATION[field][:label]}'"
+        generic_msg = "Value '#{value}' for '#{VALIDATION[field][:label]}' is not a valid date"
         if value.match(%r{\d{2}/\d{2}/\d{4}})
           specific_msg = "#{generic_msg} due to ambiguity between 'MM/DD/YYYY' and 'DD/MM/YYYY', please use the 'YYYY-MM-DD' format instead"
           assert page.has_content?(specific_msg), "Error message for #{field} missing"
@@ -241,17 +242,17 @@ class PublicHealthMonitoringImportVerifier < ApplicationSystemTestCase
         end
       end
       if value && !value.blank? && VALIDATION[field][:checks].include?(:phone) && Phonelib.parse(value, 'US').full_e164.nil?
-        assert page.has_content?("'#{value}' is not a valid phone number for '#{VALIDATION[field][:label]}'"), "Error message for #{field} missing"
+        assert page.has_content?("Value '#{value}' for '#{VALIDATION[field][:label]}' is not a valid phone number"), "Error message for #{field} missing"
       end
       if value && !value.blank? && VALIDATION[field][:checks].include?(:state) && !VALID_STATES.include?(value) && STATE_ABBREVIATIONS[value.upcase.to_sym].nil?
         assert page.has_content?("'#{value}' is not a valid state for '#{VALIDATION[field][:label]}'"), "Error message for #{field} missing"
       end
       if value && !value.blank? && VALIDATION[field][:checks].include?(:sex) && !%(Male Female Unknown M F).include?(value.capitalize)
-        assert page.has_content?("'#{value}' is not a valid sex for '#{VALIDATION[field][:label]}', acceptable values are Male, Female, and Unknown"),
+        assert page.has_content?("Value '#{value}' for '#{VALIDATION[field][:label]}' is not an acceptable value"),
                "Error message for #{field} missing"
       end
       if value && !value.blank? && VALIDATION[field][:checks].include?(:email) && !ValidEmail2::Address.new(value).valid?
-        assert page.has_content?("'#{value}' is not a valid Email Address for '#{VALIDATION[field][:label]}'"), "Error message for #{field} missing"
+        assert page.has_content?("Value '#{value}' for '#{VALIDATION[field][:label]}' is not a valid Email Address"), "Error message for #{field} missing"
       end
     elsif field == :jurisdiction_path
       return unless value && !value.blank?
@@ -273,7 +274,7 @@ class PublicHealthMonitoringImportVerifier < ApplicationSystemTestCase
     elsif field == :assigned_user
       return unless value && !value.blank? && !value.to_i.between?(1, 999_999)
 
-      msg = "'#{value}' is not valid for 'Assigned User', acceptable values are numbers between 1-999999"
+      msg = "Value '#{value}' for 'Assigned User' is not valid, acceptable values are numbers between 1-999999"
       assert page.has_content?(msg), "Error message for #{field} missing"
     end
   end

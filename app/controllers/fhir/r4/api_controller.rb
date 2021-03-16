@@ -159,7 +159,9 @@ class Fhir::R4::ApiController < ActionController::API
     created_by_label = "#{@m2m_workflow ? current_client_application&.name : current_resource_owner&.email} (API)"
 
     # Handle History for monitoree details information updates
-    info_updates = updates.filter { |attr, _value| PatientHelper.info_fields.include?(attr) }
+    # NOTE: "isolation" is a special case, because it is not a monitoring field, but it has side effects that are handled
+    # alongside monitoring fields
+    info_updates = updates.filter { |attr, _value| !PatientHelper.monitoring_fields.include?(attr) || attr == :isolation }
     Patient.detailed_history_edit(patient_before, patient, info_updates&.keys, created_by_label)
 
     # Handle History for monitoree monitoring information updates
@@ -776,18 +778,6 @@ class Fhir::R4::ApiController < ActionController::API
     errors&.values&.each_with_object([]) do |value, messages|
       value.each do |val|
         val.is_a?(Hash) ? messages.push(*format_fhir_validation_errors(val)) : messages << val
-      end
-    end
-  end
-
-  def format_model_validation_errors(resource)
-    resource.errors&.messages&.each_with_object([]) do |(attribute, errors), messages|
-      value = resource[attribute] || resource.public_send("#{attribute}_before_type_cast")
-      msg_header = 'Validation Error' + (value ? " for value '#{value}'" : '') + " on '#{VALIDATION[attribute][:label]}':"
-      errors.each do |error_message|
-        # Exclude the actual value in logging to avoid PII/PHI
-        Rails.logger.info "Validation Error on: #{attribute}"
-        messages << "#{msg_header} #{error_message}"
       end
     end
   end

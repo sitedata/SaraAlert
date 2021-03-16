@@ -593,7 +593,8 @@ class PatientTest < ActiveSupport::TestCase
                      purged: true,
                      pause_notifications: false,
                      monitoring: true,
-                     preferred_contact_method: 'Telephone call')
+                     preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333')
 
     assert_equal(0, Patient.reminder_eligible.where(id: patient.id).count)
 
@@ -601,7 +602,8 @@ class PatientTest < ActiveSupport::TestCase
                      purged: false,
                      pause_notifications: false,
                      monitoring: true,
-                     preferred_contact_method: 'Telephone call')
+                     preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333')
 
     assert_equal(1, Patient.reminder_eligible.where(id: patient.id).count)
   end
@@ -611,7 +613,8 @@ class PatientTest < ActiveSupport::TestCase
                      purged: false,
                      pause_notifications: true,
                      monitoring: true,
-                     preferred_contact_method: 'Telephone call')
+                     preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333')
 
     assert_equal(0, Patient.reminder_eligible.where(id: patient.id).count)
 
@@ -619,7 +622,8 @@ class PatientTest < ActiveSupport::TestCase
                      purged: false,
                      pause_notifications: false,
                      monitoring: true,
-                     preferred_contact_method: 'Telephone call')
+                     preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333')
 
     assert_equal(1, Patient.reminder_eligible.where(id: patient.id).count)
   end
@@ -661,7 +665,8 @@ class PatientTest < ActiveSupport::TestCase
                      purged: false,
                      pause_notifications: false,
                      monitoring: true,
-                     preferred_contact_method: 'Telephone call')
+                     preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333')
 
     assert_equal(1, Patient.reminder_eligible.where(id: patient.id).count)
   end
@@ -671,13 +676,15 @@ class PatientTest < ActiveSupport::TestCase
                        purged: false,
                        pause_notifications: false,
                        monitoring: true,
-                       preferred_contact_method: 'Telephone call')
+                       preferred_contact_method: 'Telephone call',
+                       primary_telephone: '+13333333333')
 
     patient = create(:patient,
                      purged: false,
                      pause_notifications: false,
                      monitoring: true,
-                     preferred_contact_method: 'Telephone call')
+                     preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333')
 
     patient.update!(responder_id: responder.id)
     assert_equal(0, Patient.reminder_eligible.where(id: patient.id).count)
@@ -686,7 +693,8 @@ class PatientTest < ActiveSupport::TestCase
                      purged: false,
                      pause_notifications: false,
                      monitoring: true,
-                     preferred_contact_method: 'Telephone call')
+                     preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333')
 
     assert_equal(1, Patient.reminder_eligible.where(id: patient.id).count)
   end
@@ -698,6 +706,7 @@ class PatientTest < ActiveSupport::TestCase
                      pause_notifications: false,
                      monitoring: true,
                      preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333',
                      last_assessment_reminder_sent: 13.hours.ago)
 
     assert_equal(1, Patient.reminder_eligible.where(id: patient.id).count)
@@ -708,6 +717,7 @@ class PatientTest < ActiveSupport::TestCase
                      pause_notifications: false,
                      monitoring: true,
                      preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333',
                      last_assessment_reminder_sent: nil)
 
     assert_equal(1, Patient.reminder_eligible.where(id: patient.id).count)
@@ -718,6 +728,7 @@ class PatientTest < ActiveSupport::TestCase
                      pause_notifications: false,
                      monitoring: true,
                      preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333',
                      last_assessment_reminder_sent: 12.hours.ago)
 
     assert_equal(1, Patient.reminder_eligible.where(id: patient.id).count)
@@ -728,6 +739,7 @@ class PatientTest < ActiveSupport::TestCase
                      pause_notifications: false,
                      monitoring: true,
                      preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333',
                      last_assessment_reminder_sent: 10.hours.ago)
 
     assert_equal(0, Patient.reminder_eligible.where(id: patient.id).count)
@@ -740,6 +752,7 @@ class PatientTest < ActiveSupport::TestCase
                      pause_notifications: false,
                      monitoring: true,
                      preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333',
                      latest_assessment_at: 25.hours.ago)
 
     assert_equal(1, Patient.reminder_eligible.where(id: patient.id).count)
@@ -750,6 +763,7 @@ class PatientTest < ActiveSupport::TestCase
                      pause_notifications: false,
                      monitoring: true,
                      preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333',
                      latest_assessment_at: nil)
 
     assert_equal(1, Patient.reminder_eligible.where(id: patient.id).count)
@@ -760,6 +774,7 @@ class PatientTest < ActiveSupport::TestCase
                      pause_notifications: false,
                      monitoring: true,
                      preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333',
                      latest_assessment_at: Time.now.in_time_zone('Eastern Time (US & Canada)').beginning_of_day)
 
     assert_equal(0, Patient.reminder_eligible.where(id: patient.id).count)
@@ -770,6 +785,7 @@ class PatientTest < ActiveSupport::TestCase
                      pause_notifications: false,
                      monitoring: true,
                      preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333',
                      latest_assessment_at: Time.now)
 
     assert_equal(0, Patient.reminder_eligible.where(id: patient.id).count)
@@ -811,31 +827,36 @@ class PatientTest < ActiveSupport::TestCase
     assert_not patient.report_eligibility[:eligible]
     assert patient.report_eligibility[:messages].join(' ').include? 'ineligible preferred contact method'
 
-    patient = create(:patient, isolation: false, last_date_of_exposure: 30.days.ago, continuous_exposure: false, preferred_contact_method: 'Telephone call')
+    patient = create(:patient,
+                     isolation: false,
+                     last_date_of_exposure: 30.days.ago,
+                     continuous_exposure: false,
+                     preferred_contact_method: 'Telephone call',
+                     primary_telephone: '+13333333333')
     assert_not patient.report_eligibility[:eligible]
     assert patient.report_eligibility[:messages].join(' ').include? 'monitoring period has elapsed'
 
-    patient = create(:patient, preferred_contact_method: 'Telephone call', last_assessment_reminder_sent: 1.hour.ago)
+    patient = create(:patient, preferred_contact_method: 'Telephone call', primary_telephone: '+13333333333', last_assessment_reminder_sent: 1.hour.ago)
     assert_not patient.report_eligibility[:eligible]
     assert patient.report_eligibility[:messages].join(' ').include? 'contacted recently'
 
-    patient = create(:patient, preferred_contact_method: 'Telephone call', latest_assessment_at: 1.hour.ago)
+    patient = create(:patient, preferred_contact_method: 'Telephone call', primary_telephone: '+13333333333', latest_assessment_at: 1.hour.ago)
     assert_not patient.report_eligibility[:eligible]
     assert patient.report_eligibility[:messages].join(' ').include? 'already reported'
 
-    patient = create(:patient, preferred_contact_method: 'Telephone call', preferred_contact_time: 'Morning')
+    patient = create(:patient, preferred_contact_method: 'Telephone call', primary_telephone: '+13333333333', preferred_contact_time: 'Morning')
     assert patient.report_eligibility[:eligible]
     assert patient.report_eligibility[:messages].join(' ').include? '8:00 AM local time (Morning)'
 
-    patient = create(:patient, preferred_contact_method: 'Telephone call', preferred_contact_time: 'Afternoon')
+    patient = create(:patient, preferred_contact_method: 'Telephone call', primary_telephone: '+13333333333', preferred_contact_time: 'Afternoon')
     assert patient.report_eligibility[:eligible]
     assert patient.report_eligibility[:messages].join(' ').include? '12:00 PM local time (Afternoon)'
 
-    patient = create(:patient, preferred_contact_method: 'Telephone call', preferred_contact_time: 'Evening')
+    patient = create(:patient, preferred_contact_method: 'Telephone call', primary_telephone: '+13333333333', preferred_contact_time: 'Evening')
     assert patient.report_eligibility[:eligible]
     assert patient.report_eligibility[:messages].join(' ').include? '4:00 PM local time (Evening)'
 
-    patient = create(:patient, preferred_contact_method: 'Telephone call')
+    patient = create(:patient, preferred_contact_method: 'Telephone call', primary_telephone: '+13333333333')
     assert patient.report_eligibility[:eligible]
     assert patient.report_eligibility[:messages].join(' ').include? 'Today'
   end
@@ -1207,7 +1228,8 @@ class PatientTest < ActiveSupport::TestCase
       purged: false,
       isolation: true,
       created_at: 2.days.ago,
-      preferred_contact_method: 'SMS Texted Weblink'
+      preferred_contact_method: 'SMS Texted Weblink',
+      primary_telephone: '+13333333333'
     )
 
     # patient has asymptomatic assessment more than 24 hours ago but less than 7 days ago
@@ -1225,7 +1247,8 @@ class PatientTest < ActiveSupport::TestCase
       purged: false,
       isolation: true,
       created_at: 2.days.ago,
-      preferred_contact_method: 'SMS Texted Weblink'
+      preferred_contact_method: 'SMS Texted Weblink',
+      primary_telephone: '+13333333333'
     )
 
     assert_not Patient.reminder_eligible.find_by(id: patient.id).nil?
@@ -1241,7 +1264,8 @@ class PatientTest < ActiveSupport::TestCase
       isolation: false,
       created_at: 20.days.ago,
       last_date_of_exposure: 14.days.ago,
-      preferred_contact_method: 'SMS Texted Weblink'
+      preferred_contact_method: 'SMS Texted Weblink',
+      primary_telephone: '+13333333333'
     )
 
     # patient has asymptomatic assessment more than 1 day ago but less than 7 days ago
@@ -1260,7 +1284,8 @@ class PatientTest < ActiveSupport::TestCase
       isolation: false,
       created_at: 2.days.ago,
       last_date_of_exposure: 14.days.ago,
-      preferred_contact_method: 'SMS Texted Weblink'
+      preferred_contact_method: 'SMS Texted Weblink',
+      primary_telephone: '+13333333333'
     )
 
     assert_not Patient.reminder_eligible.find_by(id: patient.id).nil?
@@ -1276,7 +1301,8 @@ class PatientTest < ActiveSupport::TestCase
       isolation: false,
       created_at: 4.days.ago,
       last_date_of_exposure: 5.days.ago,
-      preferred_contact_method: 'SMS Texted Weblink'
+      preferred_contact_method: 'SMS Texted Weblink',
+      primary_telephone: '+13333333333'
     )
 
     # patient has asymptomatic assessment more than 1 day ago but less than 7 days ago
@@ -1295,7 +1321,8 @@ class PatientTest < ActiveSupport::TestCase
       isolation: false,
       created_at: 4.days.ago,
       continuous_exposure: true,
-      preferred_contact_method: 'SMS Texted Weblink'
+      preferred_contact_method: 'SMS Texted Weblink',
+      primary_telephone: '+13333333333'
     )
 
     # patient has asymptomatic assessment more than 1 day ago but less than 7 days ago
@@ -1448,204 +1475,493 @@ class PatientTest < ActiveSupport::TestCase
     assert_not new_head.reload.head_of_household
   end
 
-  test 'validates address_state inclusion in api context' do
+  test 'validates address_state inclusion in api and import context' do
     patient = valid_patient
 
     patient.address_state = 'Georgia'
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.address_state = 'foo'
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
     assert patient.valid?
   end
 
-  test 'validates ethnicity inclusion in api context' do
-    patient = valid_patient
-
-    patient.ethnicity = 'Hispanic or Latino'
-    assert patient.valid?(:api)
-
-    patient.ethnicity = ''
-    assert patient.valid?(:api)
-
-    patient.ethnicity = nil
-    assert patient.valid?(:api)
-
-    patient.ethnicity = 'foo'
-    assert_not patient.valid?(:api)
-    assert patient.valid?
-  end
-
-  test 'validates monitored_address_state inclusion in api context' do
+  test 'validates monitored_address_state inclusion in api and import context' do
     patient = valid_patient
 
     patient.monitored_address_state = 'Oregon'
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.monitored_address_state = ''
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.monitored_address_state = nil
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.monitored_address_state = 'foo'
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
     assert patient.valid?
   end
 
-  test 'validates preferred contact method inclusion in api context' do
+  test 'validates foreign_monitored_address_state inclusion in api and import context' do
+    patient = valid_patient
+
+    patient.foreign_monitored_address_state = 'Oregon'
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.foreign_monitored_address_state = ''
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.foreign_monitored_address_state = nil
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.foreign_monitored_address_state = 'foo'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+    assert patient.valid?
+  end
+
+  test 'validates additional_planned_travel_destination_state inclusion in api and import context' do
+    patient = valid_patient
+
+    patient.additional_planned_travel_destination_state = 'Oregon'
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.additional_planned_travel_destination_state = ''
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.additional_planned_travel_destination_state = nil
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.additional_planned_travel_destination_state = 'foo'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+    assert patient.valid?
+  end
+
+  test 'validates ethnicity inclusion in api and import context' do
+    patient = valid_patient
+
+    patient.ethnicity = 'Hispanic or Latino'
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.ethnicity = ''
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.ethnicity = nil
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.ethnicity = 'foo'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+    assert patient.valid?
+  end
+
+  test 'validates preferred contact method inclusion in api and import context' do
     patient = valid_patient
 
     patient.preferred_contact_method = 'Unknown'
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.preferred_contact_method = ''
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.preferred_contact_method = nil
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.preferred_contact_method = 'foo'
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
     assert patient.valid?
   end
 
-  test 'validates preferred contact time inclusion in api context' do
+  test 'validates preferred contact time inclusion in api and import context' do
     patient = valid_patient
 
     patient.preferred_contact_time = 'Morning'
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.preferred_contact_time = ''
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.preferred_contact_time = nil
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.preferred_contact_time = 'foo'
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
     assert patient.valid?
   end
 
-  test 'validates sex inclusion in api context' do
+  test 'validates sex inclusion in api and import context' do
     patient = valid_patient
 
     patient.sex = 'Female'
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.sex = ''
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.sex = nil
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.sex = 'foo'
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
     assert patient.valid?
   end
 
-  test 'validates primary phone is a possible phone number in api context' do
+  test 'validates primary_telephone_type inclusion in api and import context' do
     patient = valid_patient
 
-    patient.primary_telephone = '+11111111111'
+    patient.primary_telephone_type = 'Smartphone'
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
-    patient.primary_telephone = '+1 111 111 1111'
+    patient.primary_telephone_type = ''
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.primary_telephone_type = nil
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.primary_telephone_type = 'foo'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+    assert patient.valid?
+  end
+
+  test 'validates secondary_telephone_type inclusion in api and import context' do
+    patient = valid_patient
+
+    patient.secondary_telephone_type = 'Smartphone'
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.secondary_telephone_type = ''
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.secondary_telephone_type = nil
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.secondary_telephone_type = 'foo'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+    assert patient.valid?
+  end
+
+  test 'validates additional_planned_travel_type inclusion in api and import context' do
+    patient = valid_patient
+
+    patient.additional_planned_travel_type = 'Domestic'
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.additional_planned_travel_type = ''
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.additional_planned_travel_type = nil
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.additional_planned_travel_type = 'foo'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+    assert patient.valid?
+  end
+
+  test 'validates monitoring_plan inclusion' do
+    patient = valid_patient
+
+    patient.monitoring_plan = 'None'
+    assert patient.valid?
+
+    patient.monitoring_plan = ''
+    assert patient.valid?
+
+    patient.monitoring_plan = nil
+    assert patient.valid?
+
+    patient.monitoring_plan = 'foo'
+    assert_not patient.valid?
+  end
+
+  test 'validates monitoring_reason inclusion' do
+    patient = valid_patient
+
+    patient.monitoring_reason = 'Other'
+    assert patient.valid?
+
+    patient.monitoring_reason = ''
+    assert patient.valid?
+
+    patient.monitoring_reason = nil
+    assert patient.valid?
+
+    patient.monitoring_reason = 'foo'
+    assert_not patient.valid?
+  end
+
+  test 'validates exposure_risk_assessment inclusion' do
+    patient = valid_patient
+
+    patient.exposure_risk_assessment = 'Medium'
+    assert patient.valid?
+
+    patient.exposure_risk_assessment = ''
+    assert patient.valid?
+
+    patient.exposure_risk_assessment = nil
+    assert patient.valid?
+
+    patient.exposure_risk_assessment = 'foo'
+    assert_not patient.valid?
+  end
+
+  test 'validates case_status inclusion in api and import context' do
+    patient = valid_patient
+
+    patient.case_status = 'Confirmed'
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.case_status = ''
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.case_status = nil
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.case_status = 'foo'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+    assert patient.valid?
+  end
+
+  test 'validates primary phone is a possible phone number in api and import context' do
+    patient = valid_patient
+
+    patient.primary_telephone = '+15555555555'
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.primary_telephone = '+1 555 555 5555'
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.primary_telephone = ''
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.primary_telephone = nil
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.primary_telephone = '+1 123 456 7890'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
 
     patient.primary_telephone = '123'
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
     assert patient.valid?
   end
 
-  test 'validates secondary phone is a possible phone number in api context' do
+  test 'validates secondary phone is a possible phone number in api and import context' do
     patient = valid_patient
 
-    patient.secondary_telephone = '+11111111111'
+    patient.secondary_telephone = '+15555555555'
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
-    patient.secondary_telephone = '+1 111 111 1111'
+    patient.secondary_telephone = '+1 555 555 5555'
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.secondary_telephone = ''
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.secondary_telephone = nil
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.primary_telephone = '+1 123 456 7890'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
 
     patient.secondary_telephone = '123'
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
     assert patient.valid?
   end
 
-  test 'validates date_of_birth is a valid date in api context' do
+  test 'validates date_of_birth is a valid date in api and import context' do
     patient = valid_patient
 
     patient.date_of_birth = 25.years.ago
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.date_of_birth = '01-15-2000'
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
 
     patient.date_of_birth = '2000-13-13'
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
     assert patient.valid?
   end
 
-  test 'validates last_date_of_exposure is a valid date in api context' do
+  test 'validates last_date_of_exposure is a valid date in api and import context' do
     patient = valid_patient
 
-    patient.last_date_of_exposure = Time.now - 1.day
+    patient.last_date_of_exposure = 25.years.ago
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.last_date_of_exposure = '01-15-2000'
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
 
     patient.last_date_of_exposure = '2000-13-13'
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
     assert patient.valid?
   end
 
-  test 'validates symptom_onset is a valid date in api context' do
+  test 'validates symptom_onset is a valid date in api and import context' do
     patient = valid_patient
 
-    patient.symptom_onset = Time.now - 1.day
+    patient.symptom_onset = 25.years.ago
     assert patient.valid?(:api)
-
-    patient.symptom_onset = ''
-    assert patient.valid?(:api)
-
-    patient.symptom_onset = nil
-    assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.symptom_onset = '01-15-2000'
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
 
     patient.symptom_onset = '2000-13-13'
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
     assert patient.valid?
   end
 
-  test 'validates email is a valid email address in api context' do
+  test 'validates additional_planned_travel_start_date is a valid date in api and import context' do
+    patient = valid_patient
+
+    patient.additional_planned_travel_start_date = 25.years.ago
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.additional_planned_travel_start_date = '01-15-2000'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+
+    patient.additional_planned_travel_start_date = '2000-13-13'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+    assert patient.valid?
+  end
+
+  test 'validates additional_planned_travel_end_date is a valid date in api and import context' do
+    patient = valid_patient
+
+    patient.additional_planned_travel_end_date = 25.years.ago
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.additional_planned_travel_end_date = '01-15-2000'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+
+    patient.additional_planned_travel_end_date = '2000-13-13'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+    assert patient.valid?
+  end
+
+  test 'validates date_of_departure is a valid date in api and import context' do
+    patient = valid_patient
+
+    patient.date_of_departure = 25.years.ago
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.date_of_departure = '01-15-2000'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+
+    patient.date_of_departure = '2000-13-13'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+    assert patient.valid?
+  end
+
+  test 'validates date_of_arrival is a valid date in api and import context' do
+    patient = valid_patient
+
+    patient.date_of_arrival = 25.years.ago
+    assert patient.valid?(:api)
+    assert patient.valid?(:import)
+
+    patient.date_of_arrival = '01-15-2000'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+
+    patient.date_of_arrival = '2000-13-13'
+    assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
+    assert patient.valid?
+  end
+
+  test 'validates email is a valid email address in api and import context' do
     patient = valid_patient
 
     patient.email = 'foo@bar.com'
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.email = ''
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.email = nil
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.email = 'not@an@email.com'
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
     assert patient.valid?
   end
 
@@ -1656,6 +1972,7 @@ class PatientTest < ActiveSupport::TestCase
 
     patient.address_state = nil
     assert_not patient.valid?(:api)
+    assert patient.valid?(:import)
     assert patient.valid?
 
     patient.foreign_address_country = 'UK'
@@ -1669,6 +1986,7 @@ class PatientTest < ActiveSupport::TestCase
 
     patient.date_of_birth = nil
     assert_not patient.valid?(:api)
+    assert patient.valid?(:import)
     assert patient.valid?
   end
 
@@ -1679,6 +1997,7 @@ class PatientTest < ActiveSupport::TestCase
 
     patient.first_name = nil
     assert_not patient.valid?(:api)
+    assert patient.valid?(:import)
     assert patient.valid?
   end
 
@@ -1689,34 +2008,39 @@ class PatientTest < ActiveSupport::TestCase
 
     patient.last_name = nil
     assert_not patient.valid?(:api)
+    assert patient.valid?(:import)
     assert patient.valid?
   end
 
-  test 'validates email is not blank when preferred_contact_method is "E-mailed Web Link"' do
+  test 'validates email is not blank when preferred_contact_method is "E-mailed Web Link" in api and import context' do
     patient = valid_patient
 
     patient.email = 'foo@bar.com'
     patient.preferred_contact_method = 'E-mailed Web Link'
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.email = ''
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
     assert patient.valid?
   end
 
-  test 'validates primary_telephone is not blank when preferred_contact_method requires a phone' do
+  test 'validates primary_telephone is not blank when preferred_contact_method requires a phone in api and import context' do
     patient = valid_patient
 
-    patient.primary_telephone = '+1111111111'
+    patient.primary_telephone = '+15555555555'
     patient.preferred_contact_method = 'SMS Text-message'
     assert patient.valid?(:api)
+    assert patient.valid?(:import)
 
     patient.primary_telephone = ''
     assert_not patient.valid?(:api)
+    assert_not patient.valid?(:import)
     assert patient.valid?
   end
 
-  test 'validates symptom_onset is present when isolation is true' do
+  test 'validates symptom_onset is present when isolation is true in api context' do
     patient = valid_patient
 
     patient.isolation = false
@@ -1730,24 +2054,50 @@ class PatientTest < ActiveSupport::TestCase
     patient.isolation = true
     patient.symptom_onset = nil
     assert_not patient.valid?(:api)
+    assert patient.valid?(:import)
     assert patient.valid?
   end
 
-  test 'validates last_date_of_exposure is present when isolation is false' do
+  test 'validates last_date_of_exposure is present when isolation and continuous_exposure are false in api context' do
     patient = valid_patient
 
     patient.isolation = true
+    patient.continuous_exposure = false
     patient.last_date_of_exposure = nil
     assert patient.valid?(:api)
 
     patient.isolation = false
+    patient.continuous_exposure = true
+    patient.last_date_of_exposure = nil
+    assert patient.valid?(:api)
+
+    patient.isolation = false
+    patient.continuous_exposure = false
     patient.last_date_of_exposure = Time.now - 1.day
     assert patient.valid?(:api)
 
     patient.isolation = false
+    patient.continuous_exposure = false
     patient.last_date_of_exposure = nil
     assert_not patient.valid?(:api)
+    assert patient.valid?(:import)
     assert patient.valid?
+  end
+
+  test 'validates continuous_exposure is false when last_date_of_exposure is present' do
+    patient = valid_patient
+
+    patient.continuous_exposure = true
+    patient.last_date_of_exposure = nil
+    assert patient.valid?(:api)
+
+    patient.continuous_exposure = true
+    patient.last_date_of_exposure = ''
+    assert patient.valid?(:api)
+
+    patient.continuous_exposure = true
+    patient.last_date_of_exposure = Time.now - 1.day
+    assert_not patient.valid?(:api)
   end
 
   test 'ten_day_quarantine_candidates scope checks purged, monitoring, isolation, and continuous_exposure' do
@@ -2075,13 +2425,13 @@ class PatientTest < ActiveSupport::TestCase
 
     patient = create(:patient, last_date_of_exposure: 7.days.ago.utc.to_date)
     create(:assessment, patient_id: patient.id, symptomatic: false)
-    create(:laboratory, patient_id: patient.id, result: 'negative', lab_type: 'ANTIGEN', specimen_collection: DateTime.now.utc.to_date)
+    create(:laboratory, patient_id: patient.id, result: 'negative', lab_type: 'Antigen', specimen_collection: DateTime.now.utc.to_date)
     scoped_patients = Patient.seven_day_quarantine_candidates(DateTime.now.utc)
     assert scoped_patients.where(id: patient.id).present?
 
     patient = create(:patient, last_date_of_exposure: 7.days.ago.utc.to_date)
     create(:assessment, patient_id: patient.id, symptomatic: false)
-    create(:laboratory, patient_id: patient.id, result: 'negative', lab_type: 'test', specimen_collection: DateTime.now.utc.to_date)
+    create(:laboratory, patient_id: patient.id, result: 'negative', lab_type: 'Other', specimen_collection: DateTime.now.utc.to_date)
     scoped_patients = Patient.seven_day_quarantine_candidates(DateTime.now.utc)
     assert_not scoped_patients.where(id: patient.id).present?
   end
@@ -2146,23 +2496,6 @@ class PatientTest < ActiveSupport::TestCase
 
     patient.update(last_assessment_reminder_sent: 11.hours.ago)
     assert_not patient.last_assessment_reminder_sent_eligible?
-  end
-
-  test 'within preferred contact time scope utc' do
-    patient = create(:patient, monitored_address_state: 'florida', preferred_contact_time: nil)
-    # Production system will run in UTC
-    # Before window
-    Timecop.freeze((Time.now.utc).change(hour: 13)) do
-      assert_nil Patient.within_preferred_contact_time.find_by(id: patient.id)
-    end
-    # During window
-    Timecop.freeze((Time.now.utc).change(hour: 17)) do
-      assert_not_nil Patient.within_preferred_contact_time.find_by(id: patient.id)
-    end
-    # After window
-    Timecop.freeze((Time.now.utc).change(hour: 23)) do
-      assert_nil Patient.within_preferred_contact_time.find_by(id: patient.id)
-    end
   end
 
   test 'update handles monitoring change' do
@@ -2383,15 +2716,15 @@ class PatientTest < ActiveSupport::TestCase
     # Timezone defaults to Eastern
     assert_equal('America/New_York', patient.time_zone)
     # Should set on update on monitored_address_state
-    patient.update(monitored_address_state: 'minnesota')
+    patient.update(monitored_address_state: 'Minnesota')
     patient.reload
     assert_equal('America/Chicago', patient.time_zone)
     # Should set on update on address_state
-    patient.update(monitored_address_state: nil, address_state: 'montana')
+    patient.update(monitored_address_state: nil, address_state: 'Montana')
     patient.reload
     assert_equal('America/Denver', patient.time_zone)
     # monitored should take precendence over normal address
-    patient.update(monitored_address_state: 'minnesota')
+    patient.update(monitored_address_state: 'Minnesota')
     patient.reload
     assert_equal('America/Chicago', patient.time_zone)
     # should default back to Eastern
@@ -2400,14 +2733,31 @@ class PatientTest < ActiveSupport::TestCase
     assert_equal('America/New_York', patient.time_zone)
   end
 
+  test 'within preferred contact time scope utc' do
+    patient = create(:patient, monitored_address_state: 'florida', preferred_contact_time: nil)
+    # Production system will run in UTC
+    # Before window
+    Timecop.freeze((Time.now.utc).change(hour: 13)) do
+      assert_nil Patient.within_preferred_contact_time.find_by(id: patient.id)
+    end
+    # During window
+    Timecop.freeze((Time.now.utc).change(hour: 17)) do
+      assert_not_nil Patient.within_preferred_contact_time.find_by(id: patient.id)
+    end
+    # After window
+    Timecop.freeze((Time.now.utc).change(hour: 23)) do
+      assert_nil Patient.within_preferred_contact_time.find_by(id: patient.id)
+    end
+  end
+
   test 'within_preferred_contact_time scope' do
     patient = create(:patient)
     [
       { monitored_address_state: nil, address_state: nil },
-      { monitored_address_state: 'minnesota', address_state: nil },
-      { monitored_address_state: nil, address_state: 'minnesota' },
-      { monitored_address_state: 'montana', address_state: nil },
-      { monitored_address_state: nil, address_state: 'florida' }
+      { monitored_address_state: 'Minnesota', address_state: nil },
+      { monitored_address_state: nil, address_state: 'Minnesota' },
+      { monitored_address_state: 'Montana', address_state: nil },
+      { monitored_address_state: nil, address_state: 'Florida' }
     ].each do |state_params|
       patient.update(state_params)
       patient.update(preferred_contact_time: nil)
@@ -2507,6 +2857,294 @@ class PatientTest < ActiveSupport::TestCase
         assert_nil Patient.within_preferred_contact_time.find_by(id: patient.id)
       end
     end
+  end
+
+  test 'has_not_reported_recently scope' do
+    # Example: 1 day reporting period => was patient last assessment before midnight today?
+    # Example: 2 day reporting period => was patient last assessment before midnight yesterday?
+    # Example: 7 day reporting period => was patient last assessment before midnight 6 days ago?
+    original_reporting_period = ADMIN_OPTIONS['reporting_period_minutes']
+    [
+      1440,
+      1440 * 2,
+      1440 * 7,
+      1440 * 21
+    ].each do |reporting_period|
+      ADMIN_OPTIONS['reporting_period_minutes'] = reporting_period
+      [
+        { monitored_address_state: nil, address_state: nil },
+        { monitored_address_state: 'california', address_state: nil },
+        { monitored_address_state: nil, address_state: 'minnesota' },
+        { monitored_address_state: 'montana', address_state: nil },
+        { monitored_address_state: nil, address_state: 'florida' }
+      ].each do |state_params|
+        patient = create(:patient, state_params)
+        # Patient with no reports (latest_report_at is NULL)
+        assert_not_nil Patient.has_not_reported_recently.find_by(id: patient.id)
+
+        # Report outside of window
+        create(:assessment, patient: patient, created_at: 30.days.ago)
+        patient.reload
+        assert_not_nil Patient.has_not_reported_recently.find_by(id: patient.id)
+
+        # Report on right before start of window (23:59:59)
+        assessment_2 = create(
+          :assessment,
+          patient: patient,
+          created_at: (
+            Time.now.getlocal(patient.address_timezone_offset).end_of_day - ADMIN_OPTIONS['reporting_period_minutes'].minutes
+          )
+        )
+        patient.reload
+        assert_not_nil Patient.has_not_reported_recently.find_by(id: patient.id)
+
+        # Report on front edge of window (00:00:00)
+        assessment_2.update(
+          created_at: assessment_2.created_at + 1.second
+        )
+        assessment_2.reload
+        patient.reload
+        assert_nil Patient.has_not_reported_recently.find_by(id: patient.id)
+
+        # Report inside of window
+        assessment_2.update(created_at: Time.now.getlocal(patient.address_timezone_offset))
+        assessment_2.reload
+        patient.reload
+        assert_nil Patient.has_not_reported_recently.find_by(id: patient.id)
+      end
+    end
+    ADMIN_OPTIONS['reporting_period_minutes'] = original_reporting_period
+  end
+
+  test 'is_being_monitored scope' do
+    original_monitoring_period = ADMIN_OPTIONS['monitoring_period_days']
+    [
+      14,
+      21,
+      60
+    ].each do |monitoring_period|
+      ADMIN_OPTIONS['monitoring_period_days'] = monitoring_period
+      [
+        { monitored_address_state: nil, address_state: nil },
+        { monitored_address_state: 'minnesota', address_state: nil },
+        { monitored_address_state: nil, address_state: 'minnesota' },
+        { monitored_address_state: 'montana', address_state: nil },
+        { monitored_address_state: nil, address_state: 'florida' }
+      ].each do |state_params|
+        # Created now should be in the monitoring period
+        patient = create(:patient, state_params)
+        assert_not_nil Patient.is_being_monitored.find_by(id: patient.id)
+
+        # Created at within monitoring period
+        patient.update(created_at: Time.now.getlocal(patient.address_timezone_offset) - 4.days)
+        patient.reload
+        assert_not_nil Patient.is_being_monitored.find_by(id: patient.id)
+
+        # Created at on edge of monitoring period
+        patient.update(created_at: Time.now.getlocal(patient.address_timezone_offset) - monitoring_period.days)
+        patient.reload
+        assert_not_nil Patient.is_being_monitored.find_by(id: patient.id)
+
+        # Created at before monitoring period
+        patient.update(created_at: Time.now.getlocal(patient.address_timezone_offset) - monitoring_period.days - 1.day)
+        patient.reload
+        assert_nil Patient.is_being_monitored.find_by(id: patient.id)
+
+        # Exposure date today within monitoring period
+        patient.update(last_date_of_exposure: Time.now.getlocal(patient.address_timezone_offset) - 4.days)
+        patient.reload
+        assert_not_nil Patient.is_being_monitored.find_by(id: patient.id)
+
+        # Exposure date on edge of monitoring period
+        patient.update(last_date_of_exposure: Time.now.getlocal(patient.address_timezone_offset) - monitoring_period.days)
+        patient.reload
+        assert_not_nil Patient.is_being_monitored.find_by(id: patient.id)
+
+        # Exposure date before monitoring period
+        patient.update(last_date_of_exposure: Time.now.getlocal(patient.address_timezone_offset) - monitoring_period.days - 1.day)
+        patient.reload
+        assert_nil Patient.is_being_monitored.find_by(id: patient.id)
+      end
+    end
+    ADMIN_OPTIONS['monitoring_period_days'] = original_monitoring_period
+  end
+
+  test 'submitted_assessment_today scope' do
+    [
+      { monitored_address_state: nil, address_state: nil },
+      { monitored_address_state: 'minnesota', address_state: nil },
+      { monitored_address_state: nil, address_state: 'minnesota' },
+      { monitored_address_state: 'montana', address_state: nil },
+      { monitored_address_state: nil, address_state: 'florida' }
+    ].each do |state_params|
+      patient = create(:patient)
+      patient.update(state_params)
+      patient.reload
+
+      # assessment is 3 days before
+      assessment = create(:assessment, patient: patient)
+      assessment.update(created_at: 3.days.ago)
+      assessment.reload
+      patient.reload
+      assert_nil Patient.submitted_assessment_today.find_by(id: patient.id)
+
+      # assessment is 11:59 PM day before
+      yesterday_local = Time.now.getlocal(patient.address_timezone_offset) - 1.day
+      assessment.update(created_at: yesterday_local.change(hour: 23, minute: 59))
+      assessment.reload
+      patient.reload
+      assert_nil Patient.submitted_assessment_today.find_by(id: patient.id)
+
+      # assessment is 12:00 AM current day
+      assessment.update(created_at: Time.now.getlocal(patient.address_timezone_offset).change(hour: 0, minute: 0))
+      assessment.reload
+      patient.reload
+      assert_not_nil Patient.submitted_assessment_today.find_by(id: patient.id)
+
+      # assessment is 12:00 PM current day
+      assessment.update(created_at: Time.now.getlocal(patient.address_timezone_offset).change(hour: 12))
+      assessment.reload
+      patient.reload
+      assert_not_nil Patient.submitted_assessment_today.find_by(id: patient.id)
+
+      # assessment is 11:59 PM current day
+      assessment.update(created_at: Time.now.getlocal(patient.address_timezone_offset).change(hour: 23, minute: 59))
+      assessment.reload
+      patient.reload
+      assert_not_nil Patient.submitted_assessment_today.find_by(id: patient.id)
+
+      # assessment is 12:00 AM next day
+      assessment.update(created_at: Time.now.getlocal(patient.address_timezone_offset).change(hour: 0, minute: 0) + 1.day)
+      assessment.reload
+      patient.reload
+      assert_nil Patient.submitted_assessment_today.find_by(id: patient.id)
+
+      # assessment is 9:00 AM next day
+      assessment.update(created_at: Time.now.getlocal(patient.address_timezone_offset).change(hour: 9, minute: 0) + 1.day)
+      assessment.reload
+      patient.reload
+      assert_nil Patient.submitted_assessment_today.find_by(id: patient.id)
+    end
+  end
+
+  test 'end_of_monitoring_period scope' do
+    original_monitoring_period = ADMIN_OPTIONS['monitoring_period_days']
+    [
+      14,
+      21,
+      60
+    ].each do |monitoring_period|
+      ADMIN_OPTIONS['monitoring_period_days'] = monitoring_period
+      [
+        { monitored_address_state: nil, address_state: nil },
+        { monitored_address_state: 'minnesota', address_state: nil },
+        { monitored_address_state: nil, address_state: 'minnesota' },
+        { monitored_address_state: 'montana', address_state: nil },
+        { monitored_address_state: nil, address_state: 'florida' }
+      ].each do |state_params|
+        # Created now should be in the monitoring period
+        patient = create(:patient, state_params)
+        assert_nil Patient.end_of_monitoring_period.find_by(id: patient.id)
+
+        # Created at within monitoring period
+        patient.update(created_at: Time.now.getlocal(patient.address_timezone_offset) - 4.days)
+        patient.reload
+        assert_nil Patient.end_of_monitoring_period.find_by(id: patient.id)
+
+        # Created at on edge of monitoring period
+        edge_of_period = Time.now.getlocal(patient.address_timezone_offset) - monitoring_period.days
+        patient.update(created_at: edge_of_period.change(hour: 0, minute: 0))
+        patient.reload
+        assert_not_nil Patient.end_of_monitoring_period.find_by(id: patient.id)
+
+        # Created at before monitoring period
+        patient.update(created_at: edge_of_period - 1.day)
+        patient.reload
+        assert_not_nil Patient.end_of_monitoring_period.find_by(id: patient.id)
+
+        # Exposure date today within monitoring period
+        patient.update(last_date_of_exposure: Time.now.getlocal(patient.address_timezone_offset) - 4.days)
+        patient.reload
+        assert_nil Patient.end_of_monitoring_period.find_by(id: patient.id)
+
+        # Exposure date on edge of monitoring period
+        patient.update(last_date_of_exposure: edge_of_period)
+        patient.reload
+        assert_not_nil Patient.end_of_monitoring_period.find_by(id: patient.id)
+
+        # Exposure date before monitoring period
+        patient.update(last_date_of_exposure: edge_of_period - 1.day)
+        patient.reload
+        assert_not_nil Patient.end_of_monitoring_period.find_by(id: patient.id)
+      end
+    end
+    ADMIN_OPTIONS['monitoring_period_days'] = original_monitoring_period
+  end
+
+  test 'has_usable_preferred_contact_method scope' do
+    patient = create(:patient)
+
+    # eligible contact methods
+    ['E-mailed Web Link', 'SMS Texted Weblink', 'Telephone call', 'SMS Text-message'].each do |contact_method|
+      patient.update(preferred_contact_method: contact_method)
+      patient.reload
+      assert_not_nil Patient.has_usable_preferred_contact_method.find_by(id: patient.id)
+    end
+    # not eligible contact methods
+    ['Unknown', 'Opt-out', '', nil].each do |contact_method|
+      patient.update(preferred_contact_method: contact_method)
+      patient.reload
+      assert_nil Patient.has_usable_preferred_contact_method.find_by(id: patient.id)
+    end
+  end
+
+  test 'reminder_not_sent_recently scope' do
+    # Example: 1 day reporting period => was patient last assessment before midnight today?
+    # Example: 2 day reporting period => was patient last assessment before midnight yesterday?
+    # Example: 7 day reporting period => was patient last assessment before midnight 6 days ago?
+    original_reporting_period = ADMIN_OPTIONS['reporting_period_minutes']
+    [
+      1440,
+      1440 * 2,
+      1440 * 7,
+      1440 * 21
+    ].each do |reporting_period|
+      ADMIN_OPTIONS['reporting_period_minutes'] = reporting_period
+      [
+        { monitored_address_state: nil, address_state: nil },
+        { monitored_address_state: 'california', address_state: nil },
+        { monitored_address_state: nil, address_state: 'minnesota' },
+        { monitored_address_state: 'montana', address_state: nil },
+        { monitored_address_state: nil, address_state: 'florida' }
+      ].each do |state_params|
+        patient = create(:patient, state_params)
+        # Patient with no reports (latest_report_at is NULL)
+        assert_not_nil Patient.reminder_not_sent_recently.find_by(id: patient.id)
+
+        # Report outside of window
+        patient.update(last_assessment_reminder_sent: 30.days.ago)
+        patient.reload
+        assert_not_nil Patient.reminder_not_sent_recently.find_by(id: patient.id)
+
+        # Report on right before start of window (23:59:59)
+        patient.update(
+          last_assessment_reminder_sent: Time.now.getlocal(patient.address_timezone_offset).end_of_day - ADMIN_OPTIONS['reporting_period_minutes'].minutes
+        )
+        patient.reload
+        assert_not_nil Patient.reminder_not_sent_recently.find_by(id: patient.id)
+
+        # Report on front edge of window (00:00:00)
+        patient.update(last_assessment_reminder_sent: patient.last_assessment_reminder_sent + 1.second)
+        patient.reload
+        assert_nil Patient.reminder_not_sent_recently.find_by(id: patient.id)
+
+        # Report inside of window
+        patient.update(last_assessment_reminder_sent: Time.now.getlocal(patient.address_timezone_offset))
+        patient.reload
+        assert_nil Patient.reminder_not_sent_recently.find_by(id: patient.id)
+      end
+    end
+    ADMIN_OPTIONS['reporting_period_minutes'] = original_reporting_period
   end
 end
 # rubocop:enable Metrics/ClassLength

@@ -42,6 +42,22 @@ class HistoryTest < ActiveSupport::TestCase
     end
   end
 
+  test 'update patient updated_at upon history create' do
+    patient = create(:patient)
+
+    ActiveRecord::Base.record_timestamps = false
+    patient.update(updated_at: 1.day.ago)
+    ActiveRecord::Base.record_timestamps = true
+    create(:history, patient: patient)
+    assert_in_delta patient.updated_at, Time.now.utc, 1
+
+    ActiveRecord::Base.record_timestamps = false
+    patient.update(updated_at: 1.day.ago)
+    ActiveRecord::Base.record_timestamps = true
+    create(:history, patient: patient, history_type: History::HISTORY_TYPES[:monitoree_data_downloaded])
+    assert_in_delta patient.updated_at, 1.day.ago, 1
+  end
+
   test 'history in time frame' do
     assert_no_difference("History.in_time_frame('Invalid').size") do
       create(:history, history_type: 'Comment')

@@ -66,7 +66,7 @@ class Review extends React.Component {
           <Card.Body>
             <Patient
               goto={this.props.goto}
-              editMode={true}
+              edit_mode={true}
               jurisdiction_path={this.props.jurisdiction_paths[this.props.currentState.patient.jurisdiction_id]}
               details={{ ...this.props.currentState.patient, blocked_sms: this.props.currentState.blocked_sms } || {}}
             />
@@ -117,7 +117,6 @@ Review.propTypes = {
   previous: PropTypes.func,
   goto: PropTypes.func,
   submit: PropTypes.func,
-  parent_id: PropTypes.string,
   canAddGroup: PropTypes.bool,
   jurisdiction_paths: PropTypes.object,
 };

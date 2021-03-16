@@ -19,13 +19,45 @@ class SymptomsAssessment extends React.Component {
     };
   }
 
-  handleChange = event => {
-    let value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
+  handleChange = (event, value) => {
     let report = this.state.reportState;
     let field_id = event.target.id.split('_idpre')[0];
     Object.values(report.symptoms).find(symp => symp.name === field_id).value = value;
     this.setState({ reportState: report });
     this.updateBoolSymptomCount();
+  };
+
+  handleBoolChange = event => {
+    let value = event.target.checked;
+    this.handleChange(event, value);
+  };
+
+  handleIntChange = event => {
+    const validInputs = ['', '-'];
+    const value = event?.target?.value;
+    // Ensure (1) the value is defined or an empty string && meets the condintions of (2) or (3)
+    //        (2.a) the value is a number & the user is prevented from inputting non-numerical characters after inputting a number (ex. '43test')
+    //        (2.b) the value can be parsed as an integer
+    //        (2.c) the user is prevented from inputting '.' characters (since parseInt() would allow that as an input)
+    //        (3) if the value is not a valid number, check if it is an acceptable character input
+    if (
+      (value || value === '') &&
+      ((!isNaN(event.target.value) && !isNaN(parseInt(event.target.value)) && !event?.target?.value.includes('.')) || validInputs.includes(value))
+    ) {
+      this.handleChange(event, event.target.value);
+    }
+  };
+
+  handleFloatChange = event => {
+    const validInputs = ['', '.', '-', '-.'];
+    const value = event?.target?.value;
+    // Ensure (1) the value is defined or an empty string && meets the condintions of (2) or (3)
+    //        (2.a) the value is a number & the user is prevented from inputting non-numerical characters after inputting a number (ex. '4.3test')
+    //        (2.b) the value can be parsed as an float
+    //        (3) if the value is not a valid number, check if it is an acceptable character input
+    if ((value || value === '') && ((!isNaN(event.target.value) && !isNaN(parseFloat(event.target.value))) || validInputs.includes(value))) {
+      this.handleChange(event, event.target.value);
+    }
   };
 
   handleNoSymptomChange = event => {
@@ -59,7 +91,7 @@ class SymptomsAssessment extends React.Component {
     const keysToIgnore = ['who_reported'];
     let allFieldsEmpty = true;
     _.map(object, (value, key) => {
-      if (object[String(key)] !== null && !keysToIgnore.includes(key)) {
+      if (object[String(key)] !== null && object[String(key)] !== undefined && !keysToIgnore.includes(key)) {
         allFieldsEmpty = false;
       }
     });
@@ -77,19 +109,38 @@ class SymptomsAssessment extends React.Component {
   };
 
   handleSubmit = async () => {
+    const reportState = this.formattedReportState();
     if (this.fieldIsEmptyOrNew(this.props.assessment)) {
-      this.props.submit(this.state.reportState);
+      this.props.submit(reportState);
     } else {
       if (this.hasChanges()) {
         if (await confirmDialog("Are you sure you'd like to modify this report?")) {
-          this.props.submit(this.state.reportState);
+          this.props.submit(reportState);
         } else {
           this.setState({ loading: false });
         }
       } else {
-        this.props.submit(this.state.reportState);
+        this.props.submit(reportState);
       }
     }
+  };
+
+  // Converts all FloatSymptoms and IntegerSymptoms to numerical values and nulls out any non-numerical values provided (such as '-', '.', and '-.')
+  formattedReportState = () => {
+    let reportState = this.state.reportState;
+    for (const key in this.state.reportState['symptoms']) {
+      if (parseInt(key)) {
+        let symptom = reportState['symptoms'][parseInt(key)];
+        if (symptom.type === 'FloatSymptom' && !isNaN(parseFloat(symptom.value))) {
+          symptom.value = parseFloat(symptom.value);
+        } else if (symptom.type === 'IntegerSymptom' && !isNaN(parseInt(symptom.value))) {
+          symptom.value = parseInt(symptom.value);
+        } else if (symptom.type === 'IntegerSymptom' || symptom.type === 'FloatSymptom') {
+          symptom.value = null;
+        }
+      }
+    }
+    return reportState;
   };
 
   noSymptom = () => {
@@ -135,7 +186,15 @@ class SymptomsAssessment extends React.Component {
           </div>
         }
         className="pb-2"
-        onChange={this.handleChange}></Form.Check>
+        onChange={this.handleBoolChange}></Form.Check>
+    );
+  };
+
+  integerSymptom = symp => {
+    const key = `key_${symp.name}${this.props.idPre ? '_idpre' + this.props.idPre : ''}`;
+    const id = `${symp.name}${this.props.idPre ? '_idpre' + this.props.idPre : ''}`;
+    return (
+      <Form.Control size="lg" id={id} key={key + '_control'} className="form-square" value={symp.value || ''} maxLength="9" onChange={this.handleIntChange} />
     );
   };
 
@@ -143,14 +202,31 @@ class SymptomsAssessment extends React.Component {
     const key = `key_${symp.name}${this.props.idPre ? '_idpre' + this.props.idPre : ''}`;
     const id = `${symp.name}${this.props.idPre ? '_idpre' + this.props.idPre : ''}`;
     return (
+      <Form.Control
+        size="lg"
+        id={id}
+        key={key + '_control'}
+        className="form-square"
+        value={symp.value || ''}
+        maxLength="35"
+        onChange={this.handleFloatChange}
+      />
+    );
+  };
+
+  intOrFloatSymptom = symp => {
+    const key = `key_${symp.name}${this.props.idPre ? '_idpre' + this.props.idPre : ''}`;
+    const id = `${symp.name}${this.props.idPre ? '_idpre' + this.props.idPre : ''}`;
+    return (
       <Form.Row className="pt-3" key={key}>
-        <Form.Label className="nav-input-label" key={key} htmlFor={id}>
+        <Form.Label className="nav-input-label" key={key + '_label'} htmlFor={id}>
           <b>{this.props.translations[this.props.lang]['symptoms'][symp.name]['name']}</b>{' '}
           {this.props.translations[this.props.lang]['symptoms'][symp.name]['notes']
             ? ' ' + this.props.translations[this.props.lang]['symptoms'][symp.name]['notes']
             : ''}
         </Form.Label>
-        <Form.Control size="lg" id={id} key={key} className="form-square" value={symp.value || ''} type="number" onChange={this.handleChange} />
+        {symp.type === 'IntegerSymptom' && this.integerSymptom(symp)}
+        {symp.type === 'FloatSymptom' && this.floatSymptom(symp)}
       </Form.Row>
     );
   };
@@ -185,9 +261,14 @@ class SymptomsAssessment extends React.Component {
               {this.noSymptom()}
               {this.state.reportState.symptoms
                 .filter(x => {
+                  return x.type === 'IntegerSymptom';
+                })
+                .map(symp => this.intOrFloatSymptom(symp))}
+              {this.state.reportState.symptoms
+                .filter(x => {
                   return x.type === 'FloatSymptom';
                 })
-                .map(symp => this.floatSymptom(symp))}
+                .map(symp => this.intOrFloatSymptom(symp))}
             </Form.Group>
           </Form.Row>
           <Form.Row className="pt-4">
@@ -197,7 +278,8 @@ class SymptomsAssessment extends React.Component {
                   <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>&nbsp;
                 </React.Fragment>
               )}
-              {this.props.translations[this.props.lang]['web']['submit']}
+              {/* The following <span> tags cannot be removed. They prevent Google Translate from confusing the react node-tree when translated */}
+              <span>{this.props.translations[this.props.lang]['web']['submit']}</span>
             </Button>
           </Form.Row>
         </Card.Body>

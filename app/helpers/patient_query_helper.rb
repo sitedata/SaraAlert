@@ -70,7 +70,7 @@ module PatientQueryHelper # rubocop:todo Metrics/ModuleLength
       query[:filter] = unsanitized_query[:filter].collect do |filter|
         permitted_filter_params = filter.permit(:value, :numberOption, :dateOption, :relativeOption, :additionalFilterOption, filterOption: {}, value: {})
         {
-          filterOption: filter.require(:filterOption).permit(:name, :title, :description, :type, options: []),
+          filterOption: filter.require(:filterOption).permit(:name, :title, :description, :type, :hasTimestamp, options: []),
           value: permitted_filter_params[:value] || filter.require(:value) || false,
           numberOption: permitted_filter_params[:numberOption],
           dateOption: permitted_filter_params[:dateOption],
@@ -180,43 +180,44 @@ module PatientQueryHelper # rubocop:todo Metrics/ModuleLength
 
     case order
     when 'name'
-      patients = patients.order(last_name: dir).order(first_name: dir)
+      patients = patients.order(last_name: dir, first_name: dir, id: dir)
     when 'jurisdiction'
-      patients = patients.includes(:jurisdiction).order('jurisdictions.name ' + dir)
+      patients = patients.includes(:jurisdiction).order('jurisdictions.name ' + dir, id: dir)
     when 'transferred_from'
-      patients = patients.joins('INNER JOIN jurisdictions ON jurisdictions.id = patients.latest_transfer_from').order('jurisdictions.path ' + dir)
+      patients = patients.joins('INNER JOIN jurisdictions ON jurisdictions.id = patients.latest_transfer_from')
+                         .order('jurisdictions.path ' + dir, id: dir)
     when 'transferred_to'
-      patients = patients.includes(:jurisdiction).order('jurisdictions.path ' + dir)
+      patients = patients.includes(:jurisdiction).order('jurisdictions.path ' + dir, id: dir)
     when 'assigned_user'
-      patients = patients.order(Arel.sql('CASE WHEN assigned_user IS NULL THEN 1 ELSE 0 END, assigned_user ' + dir))
+      patients = patients.order(Arel.sql('CASE WHEN assigned_user IS NULL THEN 1 ELSE 0 END, assigned_user ' + dir), id: dir)
     when 'state_local_id'
-      patients = patients.order(Arel.sql('CASE WHEN user_defined_id_statelocal IS NULL THEN 1 ELSE 0 END, user_defined_id_statelocal ' + dir))
+      patients = patients.order(Arel.sql('CASE WHEN user_defined_id_statelocal IS NULL THEN 1 ELSE 0 END, user_defined_id_statelocal ' + dir), id: dir)
     when 'dob'
-      patients = patients.order(Arel.sql('CASE WHEN date_of_birth IS NULL THEN 1 ELSE 0 END, date_of_birth ' + dir))
+      patients = patients.order(Arel.sql('CASE WHEN date_of_birth IS NULL THEN 1 ELSE 0 END, date_of_birth ' + dir), id: dir)
     when 'end_of_monitoring'
       patients = patients.order(Arel.sql('CASE WHEN continuous_exposure = 1 THEN 1 ELSE 0 END,
-                                 CASE WHEN last_date_of_exposure IS NULL THEN patients.created_at ELSE last_date_of_exposure END ' + dir))
+                                 CASE WHEN last_date_of_exposure IS NULL THEN patients.created_at ELSE last_date_of_exposure END ' + dir), id: dir)
     when 'extended_isolation'
-      patients = patients.order(Arel.sql('CASE WHEN extended_isolation IS NULL THEN 1 ELSE 0 END, extended_isolation ' + dir))
+      patients = patients.order(Arel.sql('CASE WHEN extended_isolation IS NULL THEN 1 ELSE 0 END, extended_isolation ' + dir), id: dir)
     when 'symptom_onset'
-      patients = patients.order(Arel.sql('CASE WHEN symptom_onset IS NULL THEN 1 ELSE 0 END, symptom_onset ' + dir))
+      patients = patients.order(Arel.sql('CASE WHEN symptom_onset IS NULL THEN 1 ELSE 0 END, symptom_onset ' + dir), id: dir)
     when 'risk_level'
-      patients = patients.order_by_risk(asc: dir == 'asc')
+      patients = patients.order_by_risk(asc: dir == 'asc').order(id: dir)
     when 'monitoring_plan'
-      patients = patients.order(Arel.sql('monitoring_plan IS NULL, monitoring_plan ' + dir))
+      patients = patients.order(Arel.sql('monitoring_plan IS NULL, monitoring_plan ' + dir), id: dir)
     when 'public_health_action'
-      patients = patients.order(Arel.sql('CASE WHEN public_health_action IS NULL THEN 1 ELSE 0 END, public_health_action ' + dir))
+      patients = patients.order(Arel.sql('CASE WHEN public_health_action IS NULL THEN 1 ELSE 0 END, public_health_action ' + dir), id: dir)
     when 'expected_purge_date'
-      patients = patients.order(Arel.sql('CASE WHEN closed_at IS NULL THEN 1 ELSE 0 END, updated_at ' + dir))
+      patients = patients.order(Arel.sql('CASE WHEN closed_at IS NULL THEN 1 ELSE 0 END, updated_at ' + dir), id: dir)
       # Eligible purge date is a derivative field from `updated_at`
     when 'reason_for_closure'
-      patients = patients.order(Arel.sql('CASE WHEN monitoring_reason IS NULL THEN 1 ELSE 0 END, monitoring_reason ' + dir))
+      patients = patients.order(Arel.sql('CASE WHEN monitoring_reason IS NULL THEN 1 ELSE 0 END, monitoring_reason ' + dir), id: dir)
     when 'closed_at'
-      patients = patients.order(Arel.sql('CASE WHEN closed_at IS NULL THEN 1 ELSE 0 END, closed_at ' + dir))
+      patients = patients.order(Arel.sql('CASE WHEN closed_at IS NULL THEN 1 ELSE 0 END, closed_at ' + dir), id: dir)
     when 'transferred_at'
-      patients = patients.order(Arel.sql('CASE WHEN latest_transfer_at IS NULL THEN 1 ELSE 0 END, latest_transfer_at ' + dir))
+      patients = patients.order(Arel.sql('CASE WHEN latest_transfer_at IS NULL THEN 1 ELSE 0 END, latest_transfer_at ' + dir), id: dir)
     when 'latest_report'
-      patients = patients.order(Arel.sql('CASE WHEN latest_assessment_at IS NULL THEN 1 ELSE 0 END, latest_assessment_at ' + dir))
+      patients = patients.order(Arel.sql('CASE WHEN latest_assessment_at IS NULL THEN 1 ELSE 0 END, latest_assessment_at ' + dir), id: dir)
     end
 
     patients
@@ -281,6 +282,24 @@ module PatientQueryHelper # rubocop:todo Metrics/ModuleLength
         patients = advanced_filter_relative_date(patients, :symptom_onset, filter, tz_diff, :date)
       when 'continous-exposure'
         patients = patients.where(continuous_exposure: filter[:value].present? ? true : [nil, false])
+      when 'close-contact-with-known-case-id'
+        if filter[:value].blank?
+          patients = patients.where(contact_of_known_case_id: [nil, ''])
+        else
+          value_string = filter[:value].split(/\s*,\s*/).join('|')
+          case filter[:additionalFilterOption]
+          when 'Exact Match'
+            # regexp expression takes a list of strings separated by | and returns the monitorees where the
+            # contact of known case value has an exact match any of the values in the list
+            # the possible cases are: exact match of the entire value or contained in the value but preceeded and/or followed by a comma
+            # whitespace directly after the first comma and before the second is accounted for when checking possible matches
+            patients = patients.where('contact_of_known_case_id REGEXP ?', "(^|,\s*)(#{value_string})(\s*,|$)")
+          when 'Contains'
+            # regexp expression takes a list of strings separated by | and returns the monitorees where the
+            # contact of known case value contains any of the values in the list
+            patients = patients.where('contact_of_known_case_id REGEXP ?', value_string.to_s)
+          end
+        end
       when 'telephone-number'
         patients = if filter[:value].blank?
                      patients.where(primary_telephone: [nil, ''])
@@ -471,8 +490,17 @@ module PatientQueryHelper # rubocop:todo Metrics/ModuleLength
       timespan = filter[:value][:number].to_i.months if filter[:value][:unit] == 'months'
       return patients if timespan.nil?
 
-      timeframe = { after: (timespan.ago - tz_diff).beginning_of_day, before: local_current_time } if filter[:value][:when] == 'past'
-      timeframe = { after: local_current_time, before: (timespan.from_now - tz_diff).end_of_day } if filter[:value][:when] == 'next'
+      case filter[:value][:operator]
+      when 'less-than'
+        timeframe = { after: timespan.ago - tz_diff, before: local_current_time } if filter[:value][:when] == 'past'
+        timeframe = { after: local_current_time, before: timespan.from_now - tz_diff } if filter[:value][:when] == 'future'
+      when 'more-than'
+        # add one day to the timespan if relative date field does not have have a timestamp
+        # the filter then be strictly more than and not include the day of X days ago
+        timespan += 1.day if filter[:filterOption][:hasTimestamp] == false
+        timeframe = { before: timespan.ago - tz_diff } if filter[:value][:when] == 'past'
+        timeframe = { after: timespan.from_now - tz_diff } if filter[:value][:when] == 'future'
+      end
     end
     return patients if timeframe.nil?
 
@@ -553,7 +581,7 @@ module PatientQueryHelper # rubocop:todo Metrics/ModuleLength
       details[:closed_at] = patient[:closed_at]&.rfc2822 || '' if fields.include?(:closed_at)
       details[:transferred_at] = patient[:latest_transfer_at]&.rfc2822 || '' if fields.include?(:transferred_at)
       details[:latest_report] = patient[:latest_assessment_at]&.rfc2822 || '' if fields.include?(:latest_report)
-      details[:status] = patient.status.to_s.gsub('_', ' ').gsub('exposure ', '')&.gsub('isolation ', '') if fields.include?(:status)
+      details[:status] = patient.status.to_s.gsub('_', ' ').sub('exposure ', '')&.sub('isolation ', '') if fields.include?(:status)
       details[:report_eligibility] = patient.report_eligibility if fields.include?(:report_eligibility)
       details[:is_hoh] = patient.head_of_household?
 

@@ -144,6 +144,14 @@ class AdvancedFilter extends React.Component {
           description: 'Monitorees with a telephone number that contains specified digits',
           type: 'search',
         },
+        {
+          name: 'close-contact-with-known-case-id',
+          title: 'Close Contact with a Known Case ID (Text)',
+          description: 'Monitorees with a known exposure to a probable or confirmed case ID',
+          type: 'search',
+          options: ['Exact Match', 'Contains'],
+          tooltip: true,
+        },
         { name: 'email', title: 'Email (Text)', description: 'Monitoree email address', type: 'search' },
         { name: 'sara-id', title: 'Sara Alert ID (Text)', description: 'Monitoree Sara Alert ID', type: 'search' },
         { name: 'first-name', title: 'Name (First) (Text)', description: 'Monitoree first name', type: 'search' },
@@ -167,7 +175,7 @@ class AdvancedFilter extends React.Component {
         {
           name: 'risk-exposure',
           title: 'Exposure Risk Assessment (Select)',
-          description: 'Monitoree risk exposure risk assessment',
+          description: 'Monitoree exposure risk assessment',
           type: 'option',
           options: ['High', 'Medium', 'Low', 'No Identified Risk', ''],
         },
@@ -269,24 +277,28 @@ class AdvancedFilter extends React.Component {
   };
 
   // Apply the current filter
-  apply = () => {
+  apply = keepStickySettings => {
     const appliedFilter = {
       activeFilter: this.state.activeFilter,
       activeFilterOptions: _.cloneDeep(this.state.activeFilterOptions),
     };
     this.setState({ show: false, applied: true, lastAppliedFilter: appliedFilter }, () => {
-      this.props.advancedFilterUpdate(this.state.activeFilterOptions);
+      this.props.advancedFilterUpdate(this.state.activeFilterOptions, keepStickySettings);
       if (this.props.updateStickySettings && this.state.activeFilter) {
         localStorage.setItem(`SaraFilter`, this.state.activeFilter.id);
       }
     });
   };
 
+  handleApplyClick = () => {
+    this.apply(false);
+  };
+
   // Clear the current filter
   clear = () => {
     this.setState({ activeFilterOptions: [], show: false, activeFilter: null, applied: false }, () => {
       this.add();
-      this.props.advancedFilterUpdate(this.state.activeFilter);
+      this.props.advancedFilterUpdate(this.state.activeFilter, false);
       if (this.props.updateStickySettings) {
         localStorage.setItem(`SaraFilter`, null);
       }
@@ -313,12 +325,18 @@ class AdvancedFilter extends React.Component {
     });
   };
 
-  // Set the active filter
+  /**
+   * Set the active filter
+   *
+   * @param {Object} filter
+   * @param {Bool} apply - only true when called from componentDidMount(), a flag to determine when the filter should be applied to the results
+   *                         results & when other existing sticky settings/filter on the table should persist
+   */
   setFilter = (filter, apply = false) => {
     if (filter) {
       this.setState({ activeFilter: filter, show: true, activeFilterOptions: filter?.contents || [] }, () => {
         if (apply) {
-          this.apply();
+          this.apply(true);
         }
       });
     }
@@ -347,6 +365,8 @@ class AdvancedFilter extends React.Component {
           .format('YYYY-MM-DD'),
         end: moment().format('YYYY-MM-DD'),
       };
+    } else if (filterOption.type === 'relative') {
+      value = 'today';
     } else if (filterOption.type === 'search') {
       value = '';
     }
@@ -408,9 +428,9 @@ class AdvancedFilter extends React.Component {
   };
 
   // Change the relative filter option for type relative date
-  changeFilterRelativeOption = (index, value, relativeOption) => {
+  changeFilterRelativeOption = (index, relativeOption) => {
     let activeFilterOptions = [...this.state.activeFilterOptions];
-    let defaultValue = relativeOption === 'custom' ? { number: 1, unit: 'days', when: 'past' } : null;
+    let defaultValue = relativeOption === 'custom' ? { operator: 'less-than', number: 1, unit: 'days', when: 'past' } : relativeOption;
     activeFilterOptions[parseInt(index)] = {
       filterOption: activeFilterOptions[parseInt(index)].filterOption,
       value: defaultValue,
@@ -509,6 +529,7 @@ class AdvancedFilter extends React.Component {
           show: false,
           applied: false,
           activeFilter: null,
+          activeFilterOptions: null,
           savedFilters: [
             ...self.state.savedFilters.filter(filter => {
               return filter.id != id;
@@ -607,20 +628,20 @@ class AdvancedFilter extends React.Component {
   };
 
   // Render relative date specific options
-  renderRelativeOptions = (current, index, value) => {
+  renderRelativeOptions = (current, index) => {
     return (
       <Form.Control
         as="select"
         value={current}
-        className="advanced-filter-relative-options py-0 my-0 mr-4"
+        className="advanced-filter-relative-options py-0 my-0 mr-3"
         aria-label="Advanced Filter Relative Date Select Options"
         onChange={event => {
-          this.changeFilterRelativeOption(index, value, event.target.value);
+          this.changeFilterRelativeOption(index, event.target.value);
         }}>
         <option value="today">today</option>
         <option value="tomorrow">tomorrow</option>
         <option value="yesterday">yesterday</option>
-        <option value="custom">more...</option>
+        <option value="custom">custom</option>
       </Form.Control>
     );
   };
@@ -652,43 +673,69 @@ class AdvancedFilter extends React.Component {
    */
   getRelativeTooltipString(filter, value) {
     const filterName = filter.title.replace(' (Relative Date)', '');
-    let statement, rangeString, start, end;
+    let before, after;
+    let statement = '';
+    const operatorValue = value.operator.replace('-', ' ');
 
-    // set variables for date options including a time stamp
-    if (filter.hasTimestamp) {
+    if (value.operator === 'more-than') {
       if (value.when === 'past') {
-        rangeString = 'dated through today’s date';
-        start = moment()
+        before = moment()
           .subtract(value.number, value.unit)
           .format('MM/DD/YY');
-        end = 'now';
       } else {
-        rangeString = 'with today’s date as of the current time';
-        start = 'now';
-        end = moment()
+        after = moment()
           .add(value.number, value.unit)
           .format('MM/DD/YY');
       }
-    }
+    } else if (value.operator === 'less-than') {
+      // set variables for date options including a time stamp
+      if (filter.hasTimestamp) {
+        if (value.when === 'past') {
+          after = moment()
+            .subtract(value.number, value.unit)
+            .format('MM/DD/YY');
+          before = 'now';
+        } else {
+          after = 'now';
+          before = moment()
+            .add(value.number, value.unit)
+            .format('MM/DD/YY');
+        }
+      }
 
-    // set variables for date options without a timestamp
-    else {
-      if (value.when === 'past') {
-        rangeString = 'dated through today’s date';
-        start = moment()
-          .subtract(value.number, value.unit)
-          .format('MM/DD/YY');
-        end = moment().format('MM/DD/YY');
-      } else {
-        rangeString = 'with today’s date';
-        start = moment().format('MM/DD/YY');
-        end = moment()
-          .add(value.number, value.unit)
-          .format('MM/DD/YY');
+      // set variables for date options without a timestamp
+      else {
+        if (value.when === 'past') {
+          after = moment()
+            .subtract(value.number, value.unit)
+            .format('MM/DD/YY');
+          before = moment().format('MM/DD/YY');
+        } else {
+          after = moment().format('MM/DD/YY');
+          before = moment()
+            .add(value.number, value.unit)
+            .format('MM/DD/YY');
+        }
       }
     }
 
-    statement = `${filterName} “${value.when}” relative date periods include records ${rangeString}. The current setting of "${value.when} ${value.number} ${value.unit}" will return records with ${filterName} date from ${start} through ${end}.`;
+    statement += `The current setting of "${operatorValue} ${value.number} ${value.unit} in the ${value.when}" will return records with ${filterName} date`;
+    if (value.operator === 'less-than') {
+      const timestampString = filter.hasTimestamp ? 'the current time on ' : '';
+      if (value.when === 'past') {
+        statement += ` from ${timestampString}${after} through ${before}. `;
+      } else {
+        statement += ` from ${after} through ${timestampString}${before}. `;
+      }
+    } else {
+      const timestampString = filter.hasTimestamp ? 'the current time on ' : '';
+      if (value.when === 'past') {
+        statement += ` before ${timestampString}${before}. `;
+      } else {
+        statement += ` after ${timestampString}${after}. `;
+      }
+    }
+    statement += `To filter between two dates, use the "more than" and "less than" filters in combination.`;
     return statement;
   }
 
@@ -698,7 +745,7 @@ class AdvancedFilter extends React.Component {
    * @param {*} value - Filter value
    * @param {Number} index  - Filter index
    */
-  renderOptionTooltip = (filter, value, index) => {
+  renderOptionTooltip = (filter, value, index, additionalFilterOption) => {
     const tooltipId = `${filter.name}-${index}`;
     let statement;
 
@@ -706,7 +753,15 @@ class AdvancedFilter extends React.Component {
     // Filters of type number only get a tooltip if the numberOption is "between" (i.e. a range)
     // NOTE: Right now because of how this is set up, relative dates can't have a tooltip in addition to the one that is shown
     // here once "more" is selected.
-    if (filter.type === 'relative') {
+    if (filter.name === 'close-contact-with-known-case-id') {
+      if (additionalFilterOption === 'Exact Match') {
+        statement =
+          'Returns records with an exact match to one or more of the user-entered search values when the known Case ID is specified for monitorees with “Close Contact with a Known Case”. Use commas to separate multiple values (ex: “12, 45” will return records where known Case ID is “45” or “45, 12”).';
+      } else if (additionalFilterOption === 'Contains') {
+        statement =
+          'Returns records that contain a user-entered search value when the known Case ID is specified for monitorees with “Close Contact with a Known Case”. Use commas to separate multiple values (ex: “12, 45” will return records where known Case ID is “123, 90” or “12” or “1451).';
+      }
+    } else if (filter.type === 'relative') {
       statement = this.getRelativeTooltipString(filter, value);
     } else if (filter.type === 'number') {
       statement = '"Between" is inclusive and will filter for values within the user-entered range, including the start and end values.';
@@ -823,7 +878,7 @@ class AdvancedFilter extends React.Component {
                 <Button id="advanced-filter-reset" variant="danger" onClick={this.reset}>
                   Reset
                 </Button>
-                <Button id="advanced-filter-apply" variant="primary" className="ml-2" onClick={this.apply}>
+                <Button id="advanced-filter-apply" variant="primary" className="ml-2" onClick={this.handleApplyClick}>
                   Apply
                 </Button>
               </div>
@@ -883,7 +938,7 @@ class AdvancedFilter extends React.Component {
           </Row>
         )}
         <Row key={'rowkey-filter' + index} className="advanced-filter-statement pb-1 pt-1">
-          <Col className="py-0" md={9}>
+          <Col className="py-0" md={8}>
             {this.renderOptions(filterOption?.name, index)}
           </Col>
           {/* specific dropdown for filters with a type that requires additional options (not type option) */}
@@ -892,7 +947,7 @@ class AdvancedFilter extends React.Component {
               {this.renderAdditionalFilterOptions(additionalFilterOption, index, filterOption.options, value, numberOption, dateOption, relativeOption)}
             </Col>
           )}
-          <Col className="py-0">
+          <Col className="p-0">
             {filterOption?.type === 'boolean' && (
               <ButtonGroup toggle>
                 <ToggleButton
@@ -1038,41 +1093,52 @@ class AdvancedFilter extends React.Component {
             )}
             {filterOption?.type === 'relative' && (
               <Form.Group className="form-group-inline py-0 my-0">
-                {this.renderRelativeOptions(relativeOption, index, value)}
+                {this.renderRelativeOptions(relativeOption, index)}
                 {relativeOption === 'custom' && (
-                  <React.Fragment>
+                  <Row>
+                    <Form.Control
+                      as="select"
+                      value={value.operator}
+                      className="advanced-filter-operator-input mx-3"
+                      aria-label="Advanced Filter Relative Date Operator Select"
+                      onChange={event => {
+                        this.changeValue(index, { operator: event.target.value, number: value.number, unit: value.unit, when: value.when });
+                      }}>
+                      <option value="less-than">less than</option>
+                      <option value="more-than">more than</option>
+                    </Form.Control>
+                    <Form.Control
+                      value={value.number}
+                      className="advanced-filter-number-input"
+                      aria-label="Advanced Filter Relative Date Number Select"
+                      type="number"
+                      min="1"
+                      onChange={event => this.changeValue(index, { operator: value.operator, number: event.target.value, unit: value.unit, when: value.when })}
+                    />
+                    <Form.Control
+                      as="select"
+                      value={value.unit}
+                      className="advanced-filter-unit-input mx-3"
+                      aria-label="Advanced Filter Relative Date Unit Select"
+                      onChange={event => {
+                        this.changeValue(index, { operator: value.operator, number: value.number, unit: event.target.value, when: value.when });
+                      }}>
+                      <option value="days">day(s)</option>
+                      <option value="weeks">week(s)</option>
+                      <option value="months">month(s)</option>
+                    </Form.Control>
                     <Form.Control
                       as="select"
                       value={value.when}
                       className="advanced-filter-when-input"
                       aria-label="Advanced Filter Relative Date When Select"
                       onChange={event => {
-                        this.changeValue(index, { number: value.number, unit: value.unit, when: event.target.value });
+                        this.changeValue(index, { operator: value.operator, number: value.number, unit: value.unit, when: event.target.value });
                       }}>
                       <option value="past">in the past</option>
-                      <option value="next">in the next</option>
+                      {!filterOption.hasTimestamp && <option value="future">in the future</option>}
                     </Form.Control>
-                    <Form.Control
-                      value={value.number}
-                      className="advanced-filter-number-input mx-4"
-                      aria-label="Advanced Filter Relative Date Number Select"
-                      type="number"
-                      min="1"
-                      onChange={event => this.changeValue(index, { number: event.target.value, unit: value.unit, when: value.when })}
-                    />
-                    <Form.Control
-                      as="select"
-                      value={value.unit}
-                      className="advanced-filter-unit-input"
-                      aria-label="Advanced Filter Relative Date Unit Select"
-                      onChange={event => {
-                        this.changeValue(index, { number: value.number, unit: event.target.value, when: value.when });
-                      }}>
-                      <option value="days">day(s)</option>
-                      <option value="weeks">week(s)</option>
-                      <option value="months">month(s)</option>
-                    </Form.Control>
-                  </React.Fragment>
+                  </Row>
                 )}
               </Form.Group>
             )}
@@ -1090,7 +1156,7 @@ class AdvancedFilter extends React.Component {
           </Col>
           <Col className="py-0" md="auto">
             {filterOption && (filterOption.tooltip || numberOption === 'between' || relativeOption === 'custom') && (
-              <span className="align-middle mx-3">{this.renderOptionTooltip(filterOption, value, index)}</span>
+              <span className="align-middle mx-3">{this.renderOptionTooltip(filterOption, value, index, additionalFilterOption)}</span>
             )}
             <div className="float-right">
               <Button className="remove-filter-row" variant="danger" onClick={() => this.remove(index)} aria-label="Remove Advanced Filter Option">

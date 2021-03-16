@@ -24,40 +24,63 @@ class MonitoringActions extends React.Component {
               <MonitoringStatus
                 patient={this.props.patient}
                 authenticity_token={this.props.authenticity_token}
-                has_dependents={this.props.has_dependents}
-                in_household_with_member_with_ce_in_exposure={this.props.in_household_with_member_with_ce_in_exposure}
+                household_members={this.props.household_members}
                 monitoring_reasons={this.props.monitoring_reasons}
+                current_user={this.props.current_user}
+                jurisdiction_paths={this.props.jurisdiction_paths}
               />
             </Form.Group>
             <Form.Group as={Col} md="12" lg="8" className="pt-2">
               <ExposureRiskAssessment
                 patient={this.props.patient}
                 authenticity_token={this.props.authenticity_token}
-                has_dependents={this.props.has_dependents}
+                household_members={this.props.household_members}
+                current_user={this.props.current_user}
+                jurisdiction_paths={this.props.jurisdiction_paths}
               />
             </Form.Group>
             <Form.Group as={Col} md="12" lg="8" className="pt-2">
-              <MonitoringPlan patient={this.props.patient} authenticity_token={this.props.authenticity_token} has_dependents={this.props.has_dependents} />
+              <MonitoringPlan
+                patient={this.props.patient}
+                authenticity_token={this.props.authenticity_token}
+                household_members={this.props.household_members}
+                current_user={this.props.current_user}
+                jurisdiction_paths={this.props.jurisdiction_paths}
+              />
             </Form.Group>
             <Form.Group as={Col} md="12" lg="8" className="pt-2">
-              <CaseStatus patient={this.props.patient} authenticity_token={this.props.authenticity_token} has_dependents={this.props.has_dependents} />
+              <CaseStatus
+                patient={this.props.patient}
+                authenticity_token={this.props.authenticity_token}
+                household_members={this.props.household_members}
+                current_user={this.props.current_user}
+                jurisdiction_paths={this.props.jurisdiction_paths}
+              />
             </Form.Group>
             <Form.Group as={Col} md="12" lg="8" className="pt-2">
-              <PublicHealthAction patient={this.props.patient} authenticity_token={this.props.authenticity_token} has_dependents={this.props.has_dependents} />
+              <PublicHealthAction
+                patient={this.props.patient}
+                authenticity_token={this.props.authenticity_token}
+                household_members={this.props.household_members}
+                current_user={this.props.current_user}
+                jurisdiction_paths={this.props.jurisdiction_paths}
+              />
             </Form.Group>
             <Form.Group as={Col} md="12" lg="8" className="pt-2">
               <AssignedUser
                 patient={this.props.patient}
                 authenticity_token={this.props.authenticity_token}
-                has_dependents={this.props.has_dependents}
+                household_members={this.props.household_members}
                 assigned_users={this.props.assigned_users}
+                current_user={this.props.current_user}
+                jurisdiction_paths={this.props.jurisdiction_paths}
               />
             </Form.Group>
             <Form.Group as={Col} lg="24" className="pt-2">
               <Jurisdiction
                 patient={this.props.patient}
                 authenticity_token={this.props.authenticity_token}
-                has_dependents={this.props.has_dependents}
+                household_members={this.props.household_members}
                 jurisdiction_paths={this.props.jurisdiction_paths}
                 current_user={this.props.current_user}
               />
@@ -76,8 +99,7 @@ MonitoringActions.propTypes = {
   authenticity_token: PropTypes.string,
   jurisdiction_paths: PropTypes.object,
   assigned_users: PropTypes.array,
-  has_dependents: PropTypes.bool,
-  in_household_with_member_with_ce_in_exposure: PropTypes.bool,
+  household_members: PropTypes.array,
   monitoring_reasons: PropTypes.array,
 };
 

@@ -178,7 +178,6 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
     Patient.find_by(id: 2).update!(
       preferred_contact_method: 'SMS Texted Weblink',
       preferred_contact_time: 'Afternoon',
-      last_date_of_exposure: 4.days.ago,
       symptom_onset: 3.days.ago,
       isolation: true,
       primary_telephone: '+15555559999',
@@ -198,7 +197,8 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
       secondary_telephone_type: 'Landline',
       black_or_african_american: true,
       asian: true,
-      continuous_exposure: true
+      continuous_exposure: true,
+      last_date_of_exposure: nil
     )
     @patient_2 = Patient.find_by(id: 2).as_fhir
 
@@ -925,7 +925,7 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
     assert_equal 'Kirlin44', json_response['name'].first['family']
     assert_equal 'SMS Texted Weblink', json_response['extension'].filter { |e| e['url'].include? 'preferred-contact-method' }.first['valueString']
     assert_equal 'Afternoon', json_response['extension'].filter { |e| e['url'].include? 'preferred-contact-time' }.first['valueString']
-    assert_equal 4.days.ago.strftime('%Y-%m-%d'), json_response['extension'].filter { |e| e['url'].include? 'last-date-of-exposure' }.first['valueDate']
+    assert json_response['extension'].filter { |e| e['url'].include? 'continuous-exposure' }.first['valueBoolean']
     assert_equal 3.days.ago.strftime('%Y-%m-%d'), json_response['extension'].filter { |e| e['url'].include? 'symptom-onset-date' }.first['valueDate']
     assert p.user_defined_symptom_onset
     assert json_response['extension'].filter { |e| e['url'].include? 'isolation' }.first['valueBoolean']
@@ -950,19 +950,43 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
     assert_equal patient.user_defined_id_statelocal, json_response['identifier'].find { |i| i['system'].include? 'state-local-id' }['value']
   end
 
-  test 'should create History items when updating patient' do
+  test 'should create "Record Edit" and not "Monitoring Change" History item when updating patient with record edit' do
     patient = @patient_2
-    patient.active = false
+    patient.identifier = [FHIR::Identifier.new(system: 'http://saraalert.org/SaraAlert/state-local-id', value: '123')]
     resource_path = "/fhir/r4/Patient/#{patient.id}"
+    histories = History.where(patient: patient.id)
+    record_edit_count = histories.where(history_type: 'Record Edit')&.count || 0
+    monitoring_change_count = histories.where(history_type: 'Monitoring Change')&.count || 0
     put(
       resource_path,
       params: patient.to_json,
       headers: { 'Authorization': "Bearer #{@system_patient_token_rw.token}", 'Content-Type': 'application/fhir+json' }
     )
     assert_response :ok
+    histories = History.where(patient: patient.id)
+    assert_equal(record_edit_count + 1, histories.where(history_type: 'Record Edit').count)
+    assert_equal(monitoring_change_count, histories.where(history_type: 'Monitoring Change').count)
+    assert_match(/Changes were.*User defined id statelocal \("EX-904188" to "123"\)/, histories.find_by(history_type: 'Record Edit').comment)
+  end
+
+  test 'should create "Monitoring Change" History item when updating patient with monitoring change' do
+    patient = @patient_2
+    resource_path = "/fhir/r4/Patient/#{patient.id}"
+    histories = History.where(patient: patient.id)
+    monitoring_change_count = histories.where(history_type: 'Monitoring Change').count
+    patch = [
+      { 'op': 'replace', 'path': '/active', 'value': 'false' }
+    ]
+    patch(
+      resource_path,
+      params: patch.to_json,
+      headers: { 'Authorization': "Bearer #{@system_patient_token_rw.token}", 'Content-Type': 'application/json-patch+json' }
+    )
+    assert_response :ok
     json_response = JSON.parse(response.body)
     assert_equal false, json_response['active']
     histories = History.where(patient: patient.id)
+    assert_equal(monitoring_change_count + 2, histories.where(history_type: 'Monitoring Change').count)
     assert_match(/Continuous Exposure/, histories.find_by(created_by: 'Sara Alert System').comment)
     assert_match(/"Monitoring" to "Not Monitoring"/, histories.find_by(history_type: 'Monitoring Change').comment)
   end
@@ -974,7 +998,7 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
       'birthDate' => @patient_2.birthDate,
       'name' => @patient_2.name,
       'address' => @patient_2.address,
-      'extension' => @patient_2.extension.find { |e| e.url.include? 'last-date-of-exposure' },
+      'extension' => @patient_1.extension.find { |e| e.url.include? 'last-date-of-exposure' },
       'active' => false,
       'resourceType' => 'Patient'
     }
@@ -1004,7 +1028,7 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
       'birthDate' => @patient_2.birthDate,
       'name' => @patient_2.name,
       'address' => @patient_2.address,
-      'extension' => @patient_2.extension.find { |e| e.url.include? 'last-date-of-exposure' },
+      'extension' => @patient_1.extension.find { |e| e.url.include? 'last-date-of-exposure' },
       'active' => false,
       'resourceType' => 'Patient',
       'telecom' => [

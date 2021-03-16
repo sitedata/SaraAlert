@@ -5,6 +5,8 @@ require 'action_view/helpers'
 
 # History: history model
 class History < ApplicationRecord
+  include ExcelSanitizer
+
   HISTORY_TYPES = {
     record_edit: 'Record Edit',
     report_created: 'Report Created',
@@ -19,6 +21,8 @@ class History < ApplicationRecord
     report_note: 'Report Note',
     lab_result: 'Lab Result',
     lab_result_edit: 'Lab Result Edit',
+    vaccination: 'Vaccination',
+    vaccination_edit: 'Vaccination Edit',
     close_contact: 'Close Contact',
     close_contact_edit: 'Close Contact Edit',
     contact_attempt: 'Contact Attempt',
@@ -38,6 +42,9 @@ class History < ApplicationRecord
   validates :history_type, inclusion: { in: HISTORY_TYPES.values }
 
   belongs_to :patient
+
+  # Patient updated_at should not be updated if history was created by a monitoree data download
+  after_create(proc { patient.touch unless history_type == HISTORY_TYPES[:monitoree_data_downloaded] })
 
   # All histories within the given time frame
   scope :in_time_frame, lambda { |time_frame|
@@ -142,6 +149,14 @@ class History < ApplicationRecord
 
   def self.report_reminder(patient: nil, created_by: 'Sara Alert System', comment: 'User sent a report reminder to the monitoree.')
     create_history(patient, created_by, HISTORY_TYPES[:report_reminder], comment) unless patient&.preferred_contact_method.nil?
+  end
+
+  def self.vaccination(patient: nil, created_by: 'Sara Alert System', comment: 'User added a new vaccination.')
+    create_history(patient, created_by, HISTORY_TYPES[:vaccination], comment)
+  end
+
+  def self.vaccination_edit(patient: nil, created_by: 'Sara Alert System', comment: 'User edited a vaccination.')
+    create_history(patient, created_by, HISTORY_TYPES[:vaccination_edit], comment)
   end
 
   def self.lab_result(patient: nil, created_by: 'Sara Alert System', comment: 'User added a new lab result.')
@@ -332,21 +347,6 @@ class History < ApplicationRecord
       history_created_at: created_at || '',
       history_updated_at: updated_at || ''
     }
-  end
-
-  def custom_details(fields, patient_identifiers)
-    history_details = {}
-    history_details[:id] = id || '' if fields.include?(:id)
-    history_details[:patient_id] = patient_id || '' if fields.include?(:patient_id)
-    history_details[:user_defined_id_statelocal] = patient_identifiers[:user_defined_id_statelocal]
-    history_details[:user_defined_id_cdc] = patient_identifiers[:user_defined_id_cdc]
-    history_details[:user_defined_id_nndss] = patient_identifiers[:user_defined_id_nndss]
-    history_details[:created_by] = created_by || '' if fields.include?(:created_by)
-    history_details[:history_type] = history_type || '' if fields.include?(:history_type)
-    history_details[:comment] = comment || '' if fields.include?(:comment)
-    history_details[:created_at] = created_at || '' if fields.include?(:created_at)
-    history_details[:updated_at] = updated_at || '' if fields.include?(:updated_at)
-    history_details
   end
 
   private_class_method def self.create_history(patient, created_by, type, comment)

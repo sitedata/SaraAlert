@@ -30,11 +30,8 @@ class PatientsController < ApplicationController
     @dependents_exclude_hoh = @patient.dependents_exclude_self.where(purged: false)
 
     # All household members regardless if current patient is HOH
-    household = current_user.get_patient(@patient.responder_id)&.dependents
-    @household_members = ([@patient] + (household.nil? ? [] : household)).uniq
-
-    # All household members that are in the exposure workflow with continuous exposure excluding the current patient
-    @household_members_with_ce_in_exposure_excludes_patient = household.nil? ? [] : household.where(isolation: false, continuous_exposure: true)
+    @household_members = @patient.household.where(purged: false)
+    @household_members_exclude_self = @household_members.where.not(id: @patient.id)
 
     @translations = Assessment.new.translations
 
@@ -94,6 +91,7 @@ class PatientsController < ApplicationController
 
     @dependents_exclude_hoh = @patient.dependents_exclude_self
     @propagated_fields = Hash[group_member_subset.collect { |field| [field, false] }]
+    @enrollment_step = params.permit(:step)[:step]&.to_i
   end
 
   # This follows 'new', this will receive the subject details and save a new subject
@@ -236,8 +234,11 @@ class PatientsController < ApplicationController
 
     # Update patient history with detailed edit diff
     patient_before = patient.dup
-    Patient.detailed_history_edit(patient_before, patient, allowed_params&.keys, current_user.email) if patient.update(content)
 
+    render(json: patient.errors, status: 422) and return unless patient.update(content)
+
+    allowed_fields = allowed_params&.keys&.reject { |apk| %w[jurisdiction_id assigned_user].include? apk }
+    Patient.detailed_history_edit(patient_before, patient, allowed_fields, current_user.email)
     # Add a history update for any changes from moving from isolation to exposure
     patient.update_patient_history_for_isolation(patient_before, content[:isolation]) unless content[:isolation].nil?
 
@@ -451,7 +452,7 @@ class PatientsController < ApplicationController
     # Update LDE for patient and group members only in the exposure workflow with continuous exposure on
     # NOTE: This is a possible option when changing monitoring status of HoH in isolation.
     if params.permit(:apply_to_household_cm_exp_only)[:apply_to_household_cm_exp_only] && params[:apply_to_household_cm_exp_only_date].present?
-      # Only update dependents (not including the HoH) in exposure with continuoous exposure is turned on
+      # Only update dependents (not including the HoH) in exposure with continuous exposure is turned on
       (current_user.get_patient(patient.responder_id)&.dependents_exclude_self&.where(continuous_exposure: true, isolation: false) || []).uniq.each do |member|
         History.monitoring_change(patient: member, created_by: 'Sara Alert System', comment: "User updated Monitoring Status for another member in this
         monitoree's household and chose to update Last Date of Exposure for household members so System changed Last Date of Exposure from
@@ -462,18 +463,25 @@ class PatientsController < ApplicationController
       end
     end
 
-    # Update patient and all group members
-    if params.permit(:apply_to_household)[:apply_to_household]
-      ([patient] + (current_user.get_patient(patient.responder_id)&.dependents || [])).uniq.each do |member|
-        update_monitoring_fields(member, params, patient[:id] == member[:id] ? :patient : :dependent, :group)
-      end
-      # Update patient and all group members in continuous exposure
-    elsif params.permit(:apply_to_household_cm_only)[:apply_to_household_cm_only] # update patient and group members only with continuous exposure on
-      ([patient] + (current_user.get_patient(patient.responder_id)&.dependents&.where(continuous_exposure: true) || [])).uniq.each do |member|
-        update_monitoring_fields(member, params, patient[:id] == member[:id] ? :patient : :dependent, :group_cm)
-      end
-    else # Update patient
-      update_monitoring_fields(patient, params, :patient, :none)
+    # Update patient
+    update_monitoring_fields(patient, params, :patient, :none)
+
+    # If not applying to household, return
+    apply_to_household_ids = params.permit(apply_to_household_ids: [])[:apply_to_household_ids]
+    return unless params.permit(:apply_to_household)[:apply_to_household] && !apply_to_household_ids.nil?
+
+    # If a household member has been removed, they should not be updated
+    current_household_ids = patient.household.where(purged: false).where.not(id: patient.id).pluck(:id)
+    diff_household_array = apply_to_household_ids - current_household_ids
+    unless diff_household_array.empty?
+      error_message = 'Apply to household action failed: changes have been made to this household. Please refresh.'
+      render(json: { error: error_message }, status: :bad_request) && return
+    end
+
+    # Update selected group members if applying to household and ids are supplied
+    apply_to_household_ids.each do |id|
+      member = current_user.get_patient(id)
+      update_monitoring_fields(member, params, :patient, :none) unless member.nil?
     end
   end
 
@@ -617,6 +625,9 @@ class PatientsController < ApplicationController
       :american_indian_or_alaska_native,
       :asian,
       :native_hawaiian_or_other_pacific_islander,
+      :race_other,
+      :race_unknown,
+      :race_refused_to_answer,
       :ethnicity,
       :primary_language,
       :secondary_language,
@@ -712,7 +723,6 @@ class PatientsController < ApplicationController
   def group_member_subset
     %i[
       address_line_1
-      foreign_address_line_1
       address_city
       address_state
       address_line_2
@@ -724,6 +734,7 @@ class PatientsController < ApplicationController
       monitored_address_line_2
       monitored_address_zip
       monitored_address_county
+      foreign_address_line_1
       foreign_address_city
       foreign_address_country
       foreign_address_line_2

@@ -1,6 +1,42 @@
 # frozen_string_literal: true
 
 namespace :demo do
+desc 'Backup the database'
+  task backup_database: :environment do
+    raise 'This task is only for use in a development environment' unless Rails.env == 'development' || ENV['DISABLE_DATABASE_ENVIRONMENT_CHECK']
+    username = ActiveRecord::Base.configurations.configurations[1].config['username']
+    database = ActiveRecord::Base.configurations.configurations[1].config['database']
+    system "mysqldump --opt --user=#{username} #{database} > sara_database_#{Time.now.to_i}.sql"
+  end
+
+  desc 'Restore the database'
+  task restore_database: :environment do
+    # Example usage: rake demo:restore_database FILE=sara_database_1606835867.sql
+    raise 'This task is only for use in a development environment' unless Rails.env == 'development' || ENV['DISABLE_DATABASE_ENVIRONMENT_CHECK']
+    raise 'FILE environment variable must be set to run this task' if ENV['FILE'].nil?
+    username = ActiveRecord::Base.configurations.configurations[1].config['username']
+    database = ActiveRecord::Base.configurations.configurations[1].config['database']
+    system "mysql --user=#{username} #{database} < #{ENV['FILE']}"
+  end
+
+  # Duplicate existing monitoree data
+  # Note: comment out `around_save :inform_responder, if: :responder_id_changed?` in app/models/patient.rb to speed up process
+  desc 'Generate N many more monitorees based on existing data'
+  task create_bulk_data: :environment do
+    raise 'This task is only for use in a development environment' unless Rails.env == 'development' || ENV['DISABLE_DATABASE_ENVIRONMENT_CHECK']
+    num_patients = (ENV['COUNT'] || 100000).to_i
+    num_threads = (ENV['THREADS'] || 8).to_i
+
+    duplicateable = Patient.where('responder_id = id').pluck(:id)
+    threads = []
+    (1..num_threads).each do |x|
+      threads << Thread.new do  (1..(num_patients/num_threads)).each {|x| deep_duplicate_patient(Patient.find(duplicateable.sample)) } end
+    end
+
+    threads.each(&:join)
+
+  end
+
   desc 'Configure the database for demo use'
   task setup: :environment do
     raise 'This task is only for use in a development environment' unless Rails.env == 'development' || ENV['DISABLE_DATABASE_ENVIRONMENT_CHECK']
@@ -122,7 +158,8 @@ namespace :demo do
     cache_analytics = (ENV['SKIP_ANALYTICS'] != 'true')
 
     jurisdictions = Jurisdiction.all
-    assigned_users = Hash[jurisdictions.pluck(:id).map {|id| [id, (1..999_999).to_a.sample(10)]}]
+    assigned_users = Hash[jurisdictions.pluck(:id).map { |id| [id, 10.times.map { |n| Faker::Number.number(digits: 6) }] }]
+    case_ids = Hash[jurisdictions.pluck(:id).map { |id| [id, 15.times.map { |n| Faker::Number.leading_zero_number(digits: 8) }] }]
 
     counties = YAML.safe_load(File.read(Rails.root.join('lib', 'assets', 'counties.yml')))
 
@@ -135,7 +172,7 @@ namespace :demo do
       days_ago = days - day
 
       # Populate patients, assessments, laboratories, transfers, histories, analytics
-      demo_populate_day(today, num_patients_today, days_ago, jurisdictions, assigned_users, cache_analytics, counties)
+      demo_populate_day(today, num_patients_today, days_ago, jurisdictions, assigned_users, case_ids, cache_analytics, counties)
 
       # Cases increase 10-20% every day
       num_patients_today += (num_patients_today * (0.1 + (rand / 10))).round
@@ -143,7 +180,6 @@ namespace :demo do
       printf("\n")
     end
   end
-
   desc 'Add synthetic patient/monitoree data to the database for a single day (today)'
   task update: :environment do
     raise 'This task is only for use in a development environment' unless Rails.env == 'development' || ENV['DISABLE_DATABASE_ENVIRONMENT_CHECK']
@@ -152,16 +188,17 @@ namespace :demo do
     cache_analytics = (ENV['SKIP_ANALYTICS'] != 'true')
 
     jurisdictions = Jurisdiction.all
-    assigned_users = Hash[jurisdictions.map {|jur| [jur[:id], jur.assigned_users]}]
+    assigned_users = Hash[jurisdictions.map { |jur| [jur[:id], jur.assigned_users] }]
+    case_ids = Hash[jurisdictions.map { |jur| [jur[:id], jur.immediate_patients.where.not(contact_of_known_case_id: nil).distinct.pluck(:contact_of_known_case_id).sort] }]
 
     counties = YAML.safe_load(File.read(Rails.root.join('lib', 'assets', 'counties.yml')))
 
     printf("Simulating today\n")
 
-    demo_populate_day(Date.today, num_patients_today, 0, jurisdictions, assigned_users, cache_analytics, counties)
+    demo_populate_day(Date.today, num_patients_today, 0, jurisdictions, assigned_users, case_ids, cache_analytics, counties)
   end
 
-  def demo_populate_day(today, num_patients_today, days_ago, jurisdictions, assigned_users, cache_analytics, counties)
+  def demo_populate_day(today, num_patients_today, days_ago, jurisdictions, assigned_users, case_ids, cache_analytics, counties)
     # Transactions speeds things up a bit
     ActiveRecord::Base.transaction do
       # Patients created before today
@@ -171,7 +208,7 @@ namespace :demo do
       histories = []
 
       # Create patients
-      patient_histories = demo_populate_patients(today, num_patients_today, days_ago, jurisdictions, assigned_users, counties)
+      patient_histories = demo_populate_patients(today, num_patients_today, days_ago, jurisdictions, assigned_users, case_ids, counties)
       histories = histories.concat(patient_histories)
 
       # Create assessments
@@ -181,6 +218,10 @@ namespace :demo do
       # Create laboratories
       laboratory_histories = demo_populate_laboratories(today, days_ago, existing_patients)
       histories = histories.concat(laboratory_histories)
+
+      # Create vaccinations
+      vaccine_histories = demo_populate_vaccines(today, days_ago, existing_patients)
+      histories = histories.concat(vaccine_histories)
 
       # Create close contacts
       close_contacts_histories = demo_populate_close_contacts(today, days_ago, existing_patients)
@@ -212,7 +253,7 @@ namespace :demo do
     demo_cache_analytics(today, cache_analytics)
   end
 
-  def demo_populate_patients(today, num_patients_today, days_ago, jurisdictions, assigned_users, counties)
+  def demo_populate_patients(today, num_patients_today, days_ago, jurisdictions, assigned_users, case_ids, counties)
     territory_names = ['American Samoa', 'District of Columbia', 'Federated States of Micronesia', 'Guam', 'Marshall Islands', 'Northern Mariana Islands',
                        'Palau', 'Puerto Rico', 'Virgin Islands'].freeze
 
@@ -234,7 +275,10 @@ namespace :demo do
       patient[:last_name] = "#{Faker::Name.last_name}#{rand(10)}#{rand(10)}"
       patient[:date_of_birth] = Faker::Date.birthday(min_age: 1, max_age: 85)
       patient[:age] = ((Date.today - patient[:date_of_birth]) / 365.25).round
-      %i[white black_or_african_american american_indian_or_alaska_native asian native_hawaiian_or_other_pacific_islander].sample(rand(0..4)).each { |race| patient[race] = true }
+      if rand < 0.9
+        exclusive = rand < 0.75
+        ValidationHelper::RACE_OPTIONS[exclusive ? :exclusive : :non_exclusive].map { |option| option[:race] }.sample(exclusive ? 1 : rand(0..4)).each { |race| patient[race] = true }
+      end
       patient[:ethnicity] = rand < 0.82 ? 'Not Hispanic or Latino' : 'Hispanic or Latino'
       patient[:primary_language] = rand < 0.7 ? 'English' : Faker::Nation.language
       patient[:secondary_language] = Faker::Nation.language if rand < 0.4
@@ -339,9 +383,13 @@ namespace :demo do
       patient[:potential_exposure_location] = Faker::Address.city if rand < 0.7
       patient[:potential_exposure_country] = Faker::Address.country if rand < 0.8
       patient[:exposure_notes] = Faker::Games::LeagueOfLegends.quote if rand < 0.5
+      patient[:jurisdiction_id] = jurisdictions.sample[:id]
+      patient[:assigned_user] = assigned_users[patient[:jurisdiction_id]].sample if rand < 0.8
+      patient[:exposure_risk_assessment] = ValidationHelper::VALID_PATIENT_ENUMS[:exposure_risk_assessment].sample
+      patient[:monitoring_plan] = ValidationHelper::VALID_PATIENT_ENUMS[:monitoring_plan].sample
       if rand < 0.85
-        patient[:contact_of_known_case] = rand < 0.3
-        patient[:contact_of_known_case_id] = Faker::Code.ean if patient[:contact_of_known_case] && rand < 0.5
+        patient[:contact_of_known_case] = rand < 0.5
+        patient[:contact_of_known_case_id] = case_ids[patient[:jurisdiction_id]].sample(rand(1..3)).join(', ') if patient[:contact_of_known_case] && rand < 0.9
         patient[:member_of_a_common_exposure_cohort] = rand < 0.35
         patient[:member_of_a_common_exposure_cohort_type] = Faker::Superhero.name if patient[:member_of_a_common_exposure_cohort] && rand < 0.5
         patient[:travel_to_affected_country_or_area] = rand < 0.1
@@ -353,10 +401,6 @@ namespace :demo do
         patient[:was_in_health_care_facility_with_known_cases] = rand < 0.15
         patient[:was_in_health_care_facility_with_known_cases_facility_name] = Faker::GreekPhilosophers.name if patient[:was_in_health_care_facility_with_known_cases] && rand < 0.15
       end
-      patient[:jurisdiction_id] = jurisdictions.sample[:id]
-      patient[:assigned_user] = assigned_users[patient[:jurisdiction_id]].sample if rand < 0.8
-      patient[:exposure_risk_assessment] = ValidationHelper::VALID_PATIENT_ENUMS[:exposure_risk_assessment].sample
-      patient[:monitoring_plan] = ValidationHelper::VALID_PATIENT_ENUMS[:monitoring_plan].sample
 
       # Other fields populated upon enrollment
       patient[:submission_token] = SecureRandom.urlsafe_base64[0, 10]
@@ -566,9 +610,7 @@ namespace :demo do
       printf("\rUpdating symptomatic status #{index+1} of #{symptomatic_assessments.length}...")
       if assessment.symptomatic?
         assessment_symptomatic_statuses[assessment[:id]] = { symptomatic: true }
-        if symptomatic_patients_without_symptom_onset_ids.include?(assessment[:patient_id])
-          patient_symptom_onset_date_updates[assessment[:patient_id]] = { symptom_onset: assessment[:created_at] }
-        end
+        patient_symptom_onset_date_updates[assessment[:patient_id]] = { symptom_onset: assessment[:created_at] }
       end
     end
     Assessment.update(assessment_symptomatic_statuses.keys, assessment_symptomatic_statuses.values)
@@ -617,6 +659,42 @@ namespace :demo do
       )
     end
     Laboratory.import! laboratories
+    printf(" done.\n")
+
+    return histories
+  end
+
+  def demo_populate_vaccines(today, days_ago, existing_patients)
+    printf("Generating vaccinations...")
+    vaccines = []
+    histories = []
+    patient_ids = existing_patients.pluck(:id).sample(existing_patients.count * rand(15..25) / 100)
+    patient_ids.each_with_index do |patient_id, index|
+      printf("\rGenerating vaccine #{index+1} of #{patient_ids.length}...")
+      vaccine_ts = create_fake_timestamp(today, today)
+      group_name = Vaccine.group_name_options.sample
+      notes = rand < 0.5 ? Faker::Games::LeagueOfLegends.quote : nil
+      vaccines << Vaccine.new(
+        patient_id: patient_id,
+        group_name: group_name,
+        product_name: Vaccine.product_name_options(group_name).sample,
+        administration_date: create_fake_timestamp(1.week.ago, today),
+        dose_number: Vaccine::DOSE_OPTIONS.sample,
+        notes: notes,
+        created_at: vaccine_ts,
+        updated_at: vaccine_ts
+      )
+
+      histories << History.new(
+        patient_id: patient_id,
+        created_by: User.all.select { |u| u.role?('public_health') }.sample[:email],
+        comment: "User added a new vaccine.",
+        history_type: History::HISTORY_TYPES[:vaccination],
+        created_at: vaccine_ts,
+        updated_at: vaccine_ts
+      )
+    end
+    Vaccine.import! vaccines
     printf(" done.\n")
 
     return histories
@@ -671,7 +749,7 @@ namespace :demo do
     transfers = []
     histories = []
     patient_updates = {}
-    jurisdiction_paths = Hash[jurisdictions.pluck(:id, :path).map {|id, path| [id, path]}]
+    jurisdiction_paths = Hash[jurisdictions.pluck(:id, :path)]
     patients_transfer = existing_patients.pluck(:id, :jurisdiction_id, :assigned_user).sample(existing_patients.count * rand(5..10) / 100)
     patients_transfer.each_with_index do |(patient_id, jur_id, assigned_user), index|
       printf("\rGenerating transfer #{index+1} of #{patients_transfer.length}...")
@@ -877,4 +955,62 @@ namespace :demo do
   def create_fake_timestamp(from, to)
     Faker::Time.between_dates(from: from, to: to >= Date.today ? Time.now : to, period: :all)
   end
+
+  def duplicate_timestamps(from, to)
+    to.created_at = from.created_at
+    to.updated_at = from.updated_at
+  end
+
+  def duplicate_collection(collection, old_pat, new_pat)
+    new_collection = []
+    collection.each do |resource|
+        new_resource = resource.dup
+        duplicate_timestamps(resource, new_resource)
+        new_resource.patient_id = new_pat.id
+        new_collection << new_resource
+    end
+    return new_collection
+  end
+
+  # Duplicate patient and all nested relations and change last name
+  def deep_duplicate_patient(patient, responder_id = nil)
+    new_patient = patient.dup
+    new_patient.responder_id = responder_id unless responder_id.nil?
+    new_patient.last_name = "#{Faker::Name.last_name}#{rand(10)}#{rand(10)}"
+    new_patient.submission_token = new_patient.new_submission_token
+    duplicate_timestamps(patient, new_patient)
+    new_patient.save
+    new_patient.update(responder_id: new_patient.id) if responder_id.nil?
+    patient.dependents.each do |p|
+      if p.id != p.responder_id
+         deep_duplicate_patient(p, new_patient.id)
+      end
+    end
+    patient.assessments.each do |assessment|
+        new_assessment = assessment.dup
+        duplicate_timestamps(assessment, new_assessment)
+        rep_condition = assessment.reported_condition
+        new_reported_condition = rep_condition.dup
+        new_reported_condition.save
+        symptoms = []
+        assessment.reported_condition.symptoms.each do |s|
+            news = s.dup
+            duplicate_timestamps(s, news)
+            news.condition_id = new_reported_condition.id
+            symptoms << news
+        end
+        Symptom.import symptoms
+        new_assessment.patient_id = new_patient.id
+        new_assessment.save
+        new_reported_condition.update(assessment_id: new_assessment.id, updated_at: rep_condition.updated_at, created_at: rep_condition.created_at)
+    end
+
+
+    History.import duplicate_collection(patient.histories, patient, new_patient)
+    Transfer.import duplicate_collection(patient.transfers, patient, new_patient)
+    Laboratory.import duplicate_collection(patient.laboratories, patient, new_patient)
+    CloseContact.import duplicate_collection(patient.close_contacts, patient, new_patient)
+    ContactAttempt.import duplicate_collection(patient.contact_attempts, patient, new_patient)
+  end
+
 end

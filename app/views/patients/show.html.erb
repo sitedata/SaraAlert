@@ -9,6 +9,7 @@
 
 <%= react_component('patient/PatientPage', {
                       current_user: current_user,
+                      can_add_group: current_user.can_create_patient?,
                       patient: @patient,
                       dependents: @dependents_exclude_hoh,
                       patient_id: @patient.user_defined_id_statelocal || '',
@@ -26,8 +27,7 @@
                         current_user: current_user,
                         user_can_transfer: current_user.can_transfer_patients?,
                         authenticity_token: form_authenticity_token,
-                        has_dependents: @dependents_exclude_hoh.exists?,
-                        in_household_with_member_with_ce_in_exposure: @household_members_with_ce_in_exposure_excludes_patient.count > 1,
+                        household_members: @household_members_exclude_self,
                         patient: @patient,
                         jurisdiction_paths: @possible_jurisdiction_paths,
                         assigned_users: @patient.jurisdiction.assigned_users,
@@ -40,7 +40,7 @@
   <%reporting_condition = @patient.jurisdiction.hierarchical_condition_unpopulated_symptoms%>
   <%= react_component('assessment/AssessmentTable', {
                         patient: @patient,
-                        is_household_member: @household_members.count > 1,
+                        household_members: @household_members_exclude_self,
                         report_eligibility: @patient.report_eligibility,
                         patient_status: @patient.status,
                         calculated_age: @patient.calc_current_age,
@@ -50,7 +50,8 @@
                         monitoring_period_days: ADMIN_OPTIONS['monitoring_period_days'].to_i,
                         current_user: current_user,
                         translations: Assessment.new.translations,
-                        authenticity_token: form_authenticity_token
+                        authenticity_token: form_authenticity_token,
+                        jurisdiction_paths: @possible_jurisdiction_paths
                       }) %>
 <% end %>
 
@@ -61,30 +62,35 @@
     <%= react_component('util/InfoTooltip', { tooltipTextKey: 'labResults', location: 'right' }, { style: 'display:inline' }) %>
   </div>
   <div class="m-4">
+    <div class="pb-1 mb-3">
+      <div class="btn-group" role="group">
+        <%= react_component('laboratory/Laboratory', { authenticity_token: form_authenticity_token, patient: @patient, lab: Laboratory.new }) %>
+      </div>
+    </div>
     <table class="lab_table table table-sm table-striped table-bordered table-hover table-smaller-font" style="width:100%">
       <thead>
         <tr>
+          <th class="DataTable-table-header">Actions</th>
           <th class="DataTable-table-header">ID</th>
           <th class="DataTable-table-header">Type</th>
           <th class="DataTable-table-header">Specimen Collected</th>
           <th class="DataTable-table-header">Report</th>
           <th class="DataTable-table-header">Result</th>
-          <th class="DataTable-table-header">Actions</th>
         </tr>
       </thead>
       <tbody>
         <% @laboratories.each do |lab| -%>
         <tr>
-          <td><%= lab.id %></td>
-          <td><%= lab.lab_type %></td>
-          <td><%= lab.specimen_collection %></td>
-          <td><%= lab.report %></td>
-          <td><%= lab.result %></td>
           <td>
             <div class="btn-group btn-group-sm" role="group">
               <%= react_component('laboratory/Laboratory', { authenticity_token: form_authenticity_token, patient: @patient, lab: lab }) %>
             </div>
           </td>
+          <td><%= lab.id %></td>
+          <td><%= lab.lab_type %></td>
+          <td><%= lab.specimen_collection %></td>
+          <td><%= lab.report %></td>
+          <td><%= lab.result %></td>
         </tr>
         <% end -%>
       </tbody>
@@ -92,13 +98,20 @@
     <% if @laboratories.empty? %>
       <div class="text-center mb-4">No data available in table.</div>
     <% end %>
-    <div class="pb-1">
-      <div class="btn-group" role="group">
-        <%= react_component('laboratory/Laboratory', { authenticity_token: form_authenticity_token, patient: @patient, lab: Laboratory.new }) %>
-      </div>
-    </div>
   </div>
 </div>
+<% end %>
+
+<% if current_user.can_view_patient_vaccines? %>
+  <%= react_component('patient/vaccines/VaccineTable', {
+                        patient: @patient,
+                        current_user: current_user,
+                        authenticity_token: form_authenticity_token,
+                        vaccine_mapping: Vaccine::VACCINE_STANDARDS,
+                        group_name_options: Vaccine.group_name_options,
+                        additional_product_name_options: Vaccine::ADDITIONAL_PRODUCT_NAME_OPTIONS,
+                        dose_number_options: Vaccine::DOSE_OPTIONS.filter { |option| !option.nil? }
+                      })%>
 <% end %>
 
 <% if current_user.can_view_patient_close_contacts? %>
@@ -108,38 +121,43 @@
     <%= react_component('util/InfoTooltip', { tooltipTextKey: 'closeContacts', location: 'right' }, { style: 'display:inline' }) %>
   </div>
   <div class="m-4">
+    <div class="pb-1 mb-3">
+      <div class="btn-group" role="group">
+        <%= react_component('close_contact/CloseContact', { authenticity_token: form_authenticity_token, patient: @patient, close_contact: CloseContact.new, can_enroll_patient_close_contacts: current_user.can_enroll_patient_close_contacts?, assigned_users: @patient.jurisdiction.assigned_users }) %>
+      </div>
+    </div>
     <table class="cc_table table table-sm table-striped table-bordered table-hover table-smaller-font" style="width:100%">
       <thead>
         <tr>
+          <th class="DataTable-table-header" style="min-width: 140px;">Actions</th>
           <th class="DataTable-table-header">First Name</th>
           <th class="DataTable-table-header">Last Name</th>
           <th class="DataTable-table-header">Phone Number</th>
           <th class="DataTable-table-header">Email</th>
           <th class="DataTable-table-header">Last Date of Exposure</th>
           <th class="DataTable-table-header">Assigned User</th>
-          <th class="DataTable-table-header">Notes</th>
           <th class="DataTable-table-header">Contact Attempts</th>
           <th class="DataTable-table-header">Enrolled?</th>
-          <th class="DataTable-table-header" style="min-width: 140px;">Actions</th>
+          <th class="DataTable-table-header">Notes</th>
         </tr>
       </thead>
       <tbody>
         <% @close_contacts.each do |cc| -%>
         <tr>
+          <td>
+            <div class="btn-group btn-group-sm" role="group">
+              <%= react_component('close_contact/CloseContact', { authenticity_token: form_authenticity_token, patient: @patient, close_contact: cc, can_enroll_patient_close_contacts: current_user.can_enroll_patient_close_contacts?, assigned_users: @patient.jurisdiction.assigned_users }) %>
+            </div>
+          </td>
           <td><%= cc.first_name %></td>
           <td><%= cc.last_name %></td>
           <td><%= cc.primary_telephone.present? && cc.primary_telephone.length > 10 ? cc.primary_telephone&.gsub('+1', '')&.gsub(/\D/, '')&.insert(3, '-')&.insert(7, '-') : '' %></td>
           <td><%= cc.email %></td>
           <td><%= cc.last_date_of_exposure&.to_date&.strftime('%m/%d/%Y') %></td>
           <td><%= cc.assigned_user %></td>
-          <td class="cc-notes-wrap"><%= cc.notes && cc.notes.length > 500 + 3 ? (cc.notes[0..500] + '...') : cc.notes %></td>
           <td><%= cc.contact_attempts || 0 %></td>
           <td><%= cc.enrolled_id ? 'Yes' : 'No' %> </td>
-          <td>
-            <div class="btn-group btn-group-sm" role="group">
-              <%= react_component('close_contact/CloseContact', { authenticity_token: form_authenticity_token, patient: @patient, close_contact: cc, can_enroll_patient_close_contacts: current_user.can_enroll_patient_close_contacts?, assigned_users: @patient.jurisdiction.assigned_users }) %>
-            </div>
-          </td>
+          <td class="cc-notes-wrap"><%= cc.notes && cc.notes.length > 500 + 3 ? (cc.notes[0..500] + '...') : cc.notes %></td>
         </tr>
         <% end -%>
       </tbody>
@@ -147,11 +165,6 @@
     <% if @close_contacts.empty? %>
       <div class="text-center mb-4">No data available in table.</div>
     <% end %>
-    <div class="pb-1">
-      <div class="btn-group" role="group">
-        <%= react_component('close_contact/CloseContact', { authenticity_token: form_authenticity_token, patient: @patient, close_contact: CloseContact.new, can_enroll_patient_close_contacts: current_user.can_enroll_patient_close_contacts?, assigned_users: @patient.jurisdiction.assigned_users }) %>
-      </div>
-    </div>
   </div>
 </div>
 <% end %>
