@@ -68,6 +68,27 @@ en:
       congestion-or-runny-nose:
         name: 'Congestion or Runny Nose'
         notes: ''
+      loss-of-appetite:
+        name: 'Loss of Appetite'
+        notes: ''
+      difficulty-swallowing:
+        name: 'Difficulty Swallowing'
+        notes: ''
+      rash-on-torso:
+        name: 'Rash on Torso'
+        notes: ''
+      vomiting:
+        name: 'Vomiting'
+        notes: ''
+      abdominal-pain:
+        name: 'Abdominal Pain'
+        notes: ''
+      bleeding-not-related-to-injury:
+        name: 'Bleeding Not Related to Injury'
+        notes: ''
+      hiccups:
+        name: 'Hiccups'
+        notes: ''
     threshold-op:
       less-than: 'Less Than'
       less-than-or-equal: 'Less Than Or Equal to'

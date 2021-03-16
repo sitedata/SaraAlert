@@ -11,7 +11,7 @@ import supportedLanguages from '../../../data/supportedLanguages.json';
 
 const WORKFLOW_OPTIONS = [
   { label: 'Exposure (contact)', value: 'exposure' },
-  { label: 'Isolation (case)', value: 'isolation' },
+  // { label: 'Isolation (case)', value: 'isolation' },
 ];
 
 class Identification extends React.Component {

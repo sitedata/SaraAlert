@@ -393,7 +393,7 @@ class Exposure extends React.Component {
             </Form.Control.Feedback>
           </Form.Group>
         </Form.Row>
-        <Form.Row>
+        {/* <Form.Row>
           <Form.Group className="ml-1">
             <Form.Check
               size="lg"
@@ -405,7 +405,7 @@ class Exposure extends React.Component {
             />
             <InfoTooltip tooltipTextKey="continuousExposure" location="right"></InfoTooltip>
           </Form.Group>
-        </Form.Row>
+        </Form.Row> */}
         <Form.Label className="nav-input-label pb-1">EXPOSURE RISK FACTORS (USE COMMAS TO SEPARATE MULTIPLE SPECIFIED VALUES)</Form.Label>
         <Form.Row>
           <Form.Group as={Col} md="auto" className="mb-0 my-auto pb-2">

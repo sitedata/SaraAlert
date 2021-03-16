@@ -11,32 +11,32 @@
     {
       "name": "French",
       "supported": {
-        "sms": true,
-        "email": true,
-        "phone": true
+        "sms": false,
+        "email": false,
+        "phone": false
       }
     },
     {
       "name": "Spanish",
       "supported": {
-        "sms": true,
-        "email": true,
-        "phone": true
+        "sms": false,
+        "email": false,
+        "phone": false
       }
     },
     {
       "name": "Spanish (Puerto Rican)",
       "supported": {
-        "sms": true,
-        "email": true,
-        "phone": true
+        "sms": false,
+        "email": false,
+        "phone": false
       }
     },
     {
       "name": "Somali",
       "supported": {
-        "sms": true,
-        "email": true,
+        "sms": false,
+        "email": false,
         "phone": false
       }
     },
