@@ -195,7 +195,7 @@ class CaseStatus extends React.Component {
                 value={this.state.monitoring_option}>
                 <option></option>
                 <option>End Monitoring</option>
-                <option>Continue Monitoring in Isolation Workflow</option>
+                {/* <option>Continue Monitoring in Isolation Workflow</option> */}
               </Form.Control>
             </React.Fragment>
           )}
