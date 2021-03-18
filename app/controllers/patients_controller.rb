@@ -124,9 +124,16 @@ class PatientsController < ApplicationController
       patient.monitored_address_zip = patient.address_zip
     end
     helpers.normalize_state_names(patient)
+    if params.permit(:responder_id)[:responder_id]
+      patient_hoh = current_user.get_patient(params.permit(:responder_id)[:responder_id])
+    end
     # Set the responder for this patient, this will link patients that have duplicate primary contact info
     patient.responder = if params.permit(:responder_id)[:responder_id]
-                          current_user.get_patient(params.permit(:responder_id)[:responder_id])
+                          if patient_hoh.responder_id != params.permit(:responder_id)[:responder_id]
+                            current_user.get_patient(patient_hoh.responder_id)
+                          else
+                            current_user.get_patient(params.permit(:responder_id)[:responder_id])
+                          end
                         elsif ['SMS Texted Weblink', 'Telephone call', 'SMS Text-message'].include? patient[:preferred_contact_method]
                           if current_user.viewable_patients.responder_for_number(patient[:primary_telephone])&.exists?
                             current_user.viewable_patients.responder_for_number(patient[:primary_telephone]).first
@@ -267,7 +274,7 @@ class PatientsController < ApplicationController
       error_message = 'Move to household action failed: user does not have permissions to update current monitoree.'
       render(json: { error: error_message }, status: :forbidden) && return
     end
-
+    
     # Do not do anything if there hasn't been a change to the responder at all.
     redirect_to(root_url) && return if current_patient.responder_id == new_hoh_id
 
