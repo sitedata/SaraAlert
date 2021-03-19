@@ -3,7 +3,8 @@ import { PropTypes } from 'prop-types';
 import _ from 'lodash';
 import { Card } from 'react-bootstrap';
 
-const WORKFLOWS = ['Exposure', 'Isolation'];
+// const WORKFLOWS = ['Exposure', 'Isolation'];
+const WORKFLOWS = ['Exposure'];
 
 // Provide a separate array, as object-iteration order is not guaranteed in JS
 const CONTACT_METHOD_HEADERS = ['Email', 'SMS Weblink', 'SMS Text', 'Phone Call', 'Opt-Out', 'Unknown', 'Missing', 'Total'];

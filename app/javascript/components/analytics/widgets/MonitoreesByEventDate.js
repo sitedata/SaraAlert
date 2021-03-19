@@ -4,7 +4,9 @@ import { Card, Form, Col, Row } from 'react-bootstrap';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import _ from 'lodash';
 
-const WORKFLOWS = ['Exposure', 'Isolation'];
+// const WORKFLOWS = ['Exposure', 'Isolation'];
+const WORKFLOWS = ['Exposure'];
+
 const GRAPH_CONFIGS = [
   { dataKey: 'Exposure', fill: '#557385', legendText: 'Last Date of Exposure' },
   { dataKey: 'Isolation', fill: '#DCC5A7', legendText: 'Symptom Onset Date' },

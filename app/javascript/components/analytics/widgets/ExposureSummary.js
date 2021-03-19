@@ -5,7 +5,8 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import CustomizedAxisTick from './CustomizedAxisTick';
 import _ from 'lodash';
 
-const WORKFLOWS = ['Exposure', 'Isolation'];
+// const WORKFLOWS = ['Exposure', 'Isolation'];
+const WORKFLOWS = ['Exposure'];
 const RISKFACTORS = [
   'Close Contact with Known Case',
   'Travel from Affected Country or Area',

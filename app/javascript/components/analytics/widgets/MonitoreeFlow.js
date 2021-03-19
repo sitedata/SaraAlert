@@ -3,7 +3,8 @@ import { PropTypes } from 'prop-types';
 import _ from 'lodash';
 import { Card } from 'react-bootstrap';
 
-const WORKFLOWS = ['Exposure', 'Isolation'];
+// const WORKFLOWS = ['Exposure', 'Isolation'];
+const WORKFLOWS = ['Exposure'];
 
 // Provide a separate array, as object-iteration order is not guaranteed in JS
 const MONITOREE_FLOW_HEADERS = ['Last 24 Hours', 'Last 7 Days', 'Last 14 Days', 'Total'];
