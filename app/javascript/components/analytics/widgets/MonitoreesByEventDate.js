@@ -9,7 +9,7 @@ const WORKFLOWS = ['Exposure'];
 
 const GRAPH_CONFIGS = [
   { dataKey: 'Exposure', fill: '#557385', legendText: 'Last Date of Exposure' },
-  { dataKey: 'Isolation', fill: '#DCC5A7', legendText: 'Symptom Onset Date' },
+  // { dataKey: 'Isolation', fill: '#DCC5A7', legendText: 'Symptom Onset Date' },
 ];
 let DATES_OF_INTEREST = []; // If certain dates are desired, they can be specified here
 
