@@ -150,7 +150,7 @@ class UpdateCaseStatus extends React.Component {
                     aria-label="Case Status Follow Up Select">
                     <option></option>
                     <option>End Monitoring</option>
-                    <option>Continue Monitoring in Isolation Workflow</option>
+                    {/* <option>Continue Monitoring in Isolation Workflow</option> */}
                   </Form.Control>
                 </React.Fragment>
               )}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { PropTypes } from 'prop-types';
-import { Form, Row, Col, Button, Modal, OverlayTrigger, Tooltip } from 'react-bootstrap';
+// import { Form, Row, Col, Button, Modal, OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { Form, Row, Col, Button, Modal } from 'react-bootstrap';
 import _ from 'lodash';
 import axios from 'axios';
 import moment from 'moment';
@@ -224,7 +225,7 @@ class LastDateExposure extends React.Component {
             </Row>
             <Row className="pt-2">
               <Col>
-                <OverlayTrigger
+                {/* <OverlayTrigger
                   key="tooltip-ot-ce"
                   placement="left"
                   overlay={
@@ -243,8 +244,8 @@ class LastDateExposure extends React.Component {
                       onChange={() => this.openContinuousExposureModal()}
                     />
                   </span>
-                </OverlayTrigger>
-                <InfoTooltip tooltipTextKey="continuousExposure" location="right"></InfoTooltip>
+                </OverlayTrigger> 
+                <InfoTooltip tooltipTextKey="continuousExposure" location="right"></InfoTooltip>*/}
               </Col>
             </Row>
           </Form.Group>

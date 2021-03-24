@@ -201,25 +201,26 @@ class AdvancedFilter extends React.Component {
           type: 'number',
           allowRange: true,
         },
-        {
-          name: 'ten-day-quarantine',
-          title: 'Candidate to Reduce Quarantine after 10 Days (Boolean)',
-          description: 'All asymptomatic records that meet CDC criteria to end quarantine after Day 10 (based on last date of exposure)',
-          type: 'boolean',
-          tooltip:
-            'This filter is based on "Options to Reduce Quarantine for Contacts of Persons with SARS-COV-2 Infection Using Symptom ' +
-            'Monitoring and Diagnostic Testing" released by the CDC on December 2, 2020. For more specific information, see Appendix A in the User Guide.',
-        },
-        {
-          name: 'seven-day-quarantine',
-          title: 'Candidate to Reduce Quarantine after 7 Days (Boolean)',
-          description:
-            'All asymptomatic records that meet CDC criteria to end quarantine after Day 7 (based on last date of exposure and most recent lab result)',
-          type: 'boolean',
-          tooltip:
-            'This filter is based on "Options to Reduce Quarantine for Contacts of Persons with SARS-COV-2 Infection Using Symptom ' +
-            'Monitoring and Diagnostic Testing" released by the CDC on December 2, 2020. For more specific information, see Appendix A in the User Guide.',
-        },
+        // TODO: COVID-19 specific filters
+        // {
+        //   name: 'ten-day-quarantine',
+        //   title: 'Candidate to Reduce Quarantine after 10 Days (Boolean)',
+        //   description: 'All asymptomatic records that meet CDC criteria to end quarantine after Day 10 (based on last date of exposure)',
+        //   type: 'boolean',
+        //   tooltip:
+        //     'This filter is based on "Options to Reduce Quarantine for Contacts of Persons with SARS-COV-2 Infection Using Symptom ' +
+        //     'Monitoring and Diagnostic Testing" released by the CDC on December 2, 2020. For more specific information, see Appendix A in the User Guide.',
+        // },
+        // {
+        //   name: 'seven-day-quarantine',
+        //   title: 'Candidate to Reduce Quarantine after 7 Days (Boolean)',
+        //   description:
+        //     'All asymptomatic records that meet CDC criteria to end quarantine after Day 7 (based on last date of exposure and most recent lab result)',
+        //   type: 'boolean',
+        //   tooltip:
+        //     'This filter is based on "Options to Reduce Quarantine for Contacts of Persons with SARS-COV-2 Infection Using Symptom ' +
+        //     'Monitoring and Diagnostic Testing" released by the CDC on December 2, 2020. For more specific information, see Appendix A in the User Guide.',
+        // },
       ],
       savedFilters: [],
       activeFilter: null,
