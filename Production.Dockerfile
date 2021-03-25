@@ -14,7 +14,9 @@ RUN npm install node-gyp -g
 RUN mkdir -p /app/disease-trakker
 RUN mkdir -p /app/disease-trakker/app/assets/stylesheets
 
-COPY Gemfile Gemfile.lock /app/disease-trakker/
+COPY Gemfile Gemfile.lock freedesktop.org.xml /app/disease-trakker/
+# Set this for mimemagic 0.3.7
+ENV FREEDESKTOP_MIME_TYPES_PATH=/app/disease-trakker/freedesktop.org.xml
 WORKDIR /app/disease-trakker
 RUN gem install bundler -v 2.1.4 && bundle config set without 'development test' && bundle config set deployment 'true'
 RUN bundle install --jobs $(nproc)
