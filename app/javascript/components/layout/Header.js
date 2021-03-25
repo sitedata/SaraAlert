@@ -26,23 +26,19 @@ class Header extends React.Component {
     return (
       <React.Fragment>
         <Navbar bg={this.props.show_demo_warning ? 'danger' : 'primary'} variant="dark" expand="lg" className={this.props.show_demo_warning ? '' : 'mb-3'}>
-          <Navbar.Brand className="header-brand-text" href={this.props.report_mode ? '/' : this.props.root}>
+          <Navbar.Brand className="header-brand-text" href={`${window.BASE_PATH}/${this.props.report_mode ? '' : this.props.root}`}>
             Sara Alert<small className="nav-version ml-1">{this.props.version}</small>
           </Navbar.Brand>
           {this.props.current_user && (
             <React.Fragment>
               <Nav className="mr-auto" activeKey={this.state.activeKey}>
                 {this.props.current_user?.can_see_enroller_dashboard_tab && (
-                  <Nav.Link
-                    className={`${this.state.activeKey === '/patients' ? 'nav-link-active' : 'nav-link-inactive'} py-0 ml-3`}
-                    href={`${window.BASE_PATH}/patients`}>
+                  <Nav.Link className="text-white py-0" href={`${window.BASE_PATH}/oauth/applications`}>
                     <i className="fas fa-table fa-fw mr-2"></i>Enroller Dashboard
                   </Nav.Link>
                 )}
                 {this.props.current_user?.can_see_monitoring_dashboards_tab && (
-                  <Nav.Link
-                    className={`${this.state.activeKey === '/public_health' ? 'nav-link-active' : 'nav-link-inactive'} py-0 ml-3`}
-                    href={`${window.BASE_PATH}/public_health`}>
+                  <Nav.Link className="text-white py-0" href={`${window.BASE_PATH}/sidekiq`}>
                     <i className="fas fa-table fa-fw mr-2"></i>Monitoring Dashboards
                   </Nav.Link>
                 )}
