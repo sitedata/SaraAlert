@@ -1,203 +1,81 @@
 # For usage instructions see /config/sara/README.md
 'USA':
-    children:
-        'COVID-19':
-            symptoms:
-                # Key is the symptom name as it will appear to the user
-                'Cough':
-                    # The value specified here is the threshold value for the particular symptom
-                    # values greater than or equal to this value are considered to be symptomatic
-                    # Useable values for type are [FloatSymptom, IntegerSymptom, or BoolSymptom]
-                    # The expected threshold value for bool_values should always be true
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Difficulty Breathing':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'New Loss of Smell':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'New Loss of Taste':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Shortness of Breath':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Fever':
-                    value: true
-                    type: 'BoolSymptom'
-                    notes: 'Feeling feverish or have a measured temperature at or above 100.4°F/38°C'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 2
-                'Used A Fever Reducer':
-                    value: true
-                    type: 'BoolSymptom'
-                    notes: 'In the past 24 hours, have you used any medicine that reduces fevers?'
-                    required: false
-                    threshold_operator: 'Equal'
-                    group: 2
-                'Chills':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 2
-                'Repeated Shaking with Chills':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 2
-                'Muscle Pain':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 2
-                'Headache':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 2
-                'Sore Throat':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 2
-                'Nausea or Vomiting':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 2
-                'Diarrhea':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 2
-                'Fatigue':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 2
-                'Congestion or Runny Nose':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 2
-            # Jurisdictions follow a hierarchy, the hierarchy is defined by nesting jurisdictions
-            # in the children: field
-                
-            children:
-                'Massachusetts':
-        'Ebola':
-            symptoms:
-                'Fever':
-                    value: true
-                    type: 'BoolSymptom'
-                    notes: 'Feeling feverish or have a measured temperature at or above 100.4°F/38°C'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Used A Fever Reducer':
-                    value: true
-                    type: 'BoolSymptom'
-                    notes: 'In the past 24 hours, have you used any medicine that reduces fevers?'
-                    required: false
-                    threshold_operator: 'Equal'
-                    group: 2
-                'Headache':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Loss of Appetite':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Muscle Pain':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Fatigue':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Difficulty Breathing':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Difficulty Swallowing':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Rash on Torso':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Vomiting':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Diarrhea':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Abdominal Pain':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Bleeding Not Related to Injury':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-                'Hiccups':
-                    value: true
-                    type: 'BoolSymptom'
-                    required: true
-                    threshold_operator: 'Equal'
-                    group: 1
-            children:
-                'Massachusetts':
+  symptoms:
+    'Fever':
+      value: true
+      type: 'BoolSymptom'
+      notes: 'Feeling feverish or have a measured temperature at or above 100.4°F/38°C'
+      required: true
+      threshold_operator: 'Equal'
+      group: 1
+    'Used A Fever Reducer':
+      value: true
+      type: 'BoolSymptom'
+      notes: 'In the past 24 hours, have you used any medicine that reduces fevers?'
+      required: false
+      threshold_operator: 'Equal'
+      group: 2
+    'Headache':
+      value: true
+      type: 'BoolSymptom'
+      required: true
+      threshold_operator: 'Equal'
+      group: 1
+    'Loss of Appetite':
+      value: true
+      type: 'BoolSymptom'
+      required: true
+      threshold_operator: 'Equal'
+      group: 1
+    'Muscle or Joint Pain':
+      value: true
+      type: 'BoolSymptom'
+      required: true
+      threshold_operator: 'Equal'
+      group: 1
+    'Fatigue':
+      value: true
+      type: 'BoolSymptom'
+      notes: 'Feeling very tired or weak'
+      required: true
+      threshold_operator: 'Equal'
+      group: 1
+    'Rash':
+      value: true
+      type: 'BoolSymptom'
+      required: true
+      threshold_operator: 'Equal'
+      group: 1
+    'Vomiting':
+      value: true
+      type: 'BoolSymptom'
+      required: true
+      threshold_operator: 'Equal'
+      group: 1
+    'Diarrhea':
+      value: true
+      type: 'BoolSymptom'
+      required: true
+      threshold_operator: 'Equal'
+      group: 1
+    'Abdominal (Stomach) Pain':
+      value: true
+      type: 'BoolSymptom'
+      required: true
+      threshold_operator: 'Equal'
+      group: 1
+    'Bleeding Not Related to Injury':
+      value: true
+      type: 'BoolSymptom'
+      required: true
+      threshold_operator: 'Equal'
+      group: 1
+  children:
+    'State 1':
+      children:
+        'County 1':
+        'County 2':
+    'State 2':
+      children:
+        'County 3':
+        'County 4':

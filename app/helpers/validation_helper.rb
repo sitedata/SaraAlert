@@ -83,7 +83,7 @@ module ValidationHelper # rubocop:todo Metrics/ModuleLength
     'Person Under Investigation (PUI)',
     'Case confirmed',
     'Past monitoring period',
-    'Meets criteria to discontinue isolation',
+    # 'Meets criteria to discontinue isolation',
     'Deceased',
     'Duplicate',
     'Other'

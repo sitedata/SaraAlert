@@ -36,7 +36,7 @@ en:
         notes: 'What was your lowest oxygen level in the past 24 hours?'
       fatigue:
         name: 'Fatigue'
-        notes: ''
+        notes: 'Feeling very tired or weak'
       nausea-or-vomiting:
         name: 'Nausea Or Vomiting'
         notes: ''
@@ -89,6 +89,15 @@ en:
       hiccups:
         name: 'Hiccups'
         notes: ''
+      muscle-or-joint-pain:
+        name: 'Muscle or Joint Pain'
+        notes: ''
+      rash:
+        name: 'Rash'
+        notes: ''
+      abdominal-stomach-pain:
+        name: 'Abdominal (Stomach) Pain'
+        notes: ''
     threshold-op:
       less-than: 'Less Than'
       less-than-or-equal: 'Less Than Or Equal to'
@@ -140,15 +149,15 @@ en:
         daily2-s: ' Is this person '
         daily3: 'experiencing any of the following symptoms: '
         daily4: ' Please reply with "Yes" or "No"'
-        try-again: "I'm sorry, I didn't quite get that. Please reply with \"Yes\" or \"No\". If you have any questions, please contact your local health department."
-        max_retries_message: "I’m sorry, you have reached the maximum number of response attempts. If you are experiencing a medical emergency, please call 911."
+        try-again: 'I''m sorry, I didn''t quite get that. Please reply with "Yes" or "No". If you have any questions, please contact your local health department.'
+        max_retries_message: 'I’m sorry, you have reached the maximum number of response attempts. If you are experiencing a medical emergency, please call 911.'
         thanks: 'Thank you for completing your daily report!'
       weblink:
         intro: 'Please complete the Sara Alert Daily Report for'
     phone:
       intro: 'Hello, this is Sara, the automated public health assistant calling for your daily report.'
       try-again: "I'm sorry, I didn't quite get that. Let's try again."
-      max_retries_message: "I’m sorry, you have reached the maximum number of response attempts. If you are experiencing a medical emergency, please call 911."
+      max_retries_message: 'I’m sorry, you have reached the maximum number of response attempts. If you are experiencing a medical emergency, please call 911.'
       thanks: 'Thank you for completing your daily report! Goodbye.'
       age: 'Age'
       daily1: ' This is the report for: '

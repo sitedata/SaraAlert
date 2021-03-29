@@ -88,19 +88,32 @@ const TOOLTIP_TEXT = {
     </div>
   ),
 
+  // caseStatus: (
+  //   <div>
+  //     Used to move records into the appropriate workflow.
+  //     <ul className="mb-0">
+  //       <li>
+  //         {' '}
+  //         For monitorees currently in the Exposure Workflow: Selecting Confirmed or Probable will prompt the option to move the monitoree into the Isolation
+  //         Workflow or to end monitoring. Selecting Suspect, Unknown, or Not a Case will not change the monitoree&apos;s workflow.{' '}
+  //       </li>
+  //       <li>
+  //         {' '}
+  //         For monitorees currently in the Isolation Workflow: Selecting Suspect, Unknown, or Not a Case will move the monitoree to the exposure workflow.
+  //         Selecting Confirmed or Probable will not change the monitoree&apos;s workflow.{' '}
+  //       </li>
+  //     </ul>
+  //   </div>
+  // ),
+
   caseStatus: (
     <div>
       Used to move records into the appropriate workflow.
       <ul className="mb-0">
         <li>
           {' '}
-          For monitorees currently in the Exposure Workflow: Selecting Confirmed or Probable will prompt the option to move the monitoree into the Isolation
-          Workflow or to end monitoring. Selecting Suspect, Unknown, or Not a Case will not change the monitoree&apos;s workflow.{' '}
-        </li>
-        <li>
-          {' '}
-          For monitorees currently in the Isolation Workflow: Selecting Suspect, Unknown, or Not a Case will move the monitoree to the exposure workflow.
-          Selecting Confirmed or Probable will not change the monitoree&apos;s workflow.{' '}
+          For monitorees currently in the Exposure Workflow: Selecting Confirmed or Probable will prompt the the user to end monitoring. Selecting Suspect,
+          Unknown, or Not a Case will not change the monitoree&apos;s workflow.{' '}
         </li>
       </ul>
     </div>

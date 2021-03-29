@@ -125,9 +125,11 @@ Rails.application.routes.draw do
   post '/patients/:patient_submission_token/assessments/:id', to: 'assessments#update'
 
   get '/public_health', to: 'public_health#exposure', as: :public_health
-  get '/public_health/isolation', to: 'public_health#isolation', as: :public_health_isolation
+  # get '/public_health/isolation', to: 'public_health#isolation', as: :public_health_isolation
+  # TODO: For now, redirect isolation dashboard back to public_health
+  get '/public_health/isolation', to: redirect('/public_health')
   post '/public_health/patients', to: 'public_health#patients', as: :public_health_patients
-  post '/public_health/patients/count', to: 'public_health#patients_count', as: :public_health_patients_count
+  post '/public_health/patients/count', to: 'public_health#patients_count', as: :public_health_paxtients_count
   get '/public_health/patients/counts/workflow', to: 'public_health#workflow_counts', as: :workflow_counts
   get '/public_health/patients/counts/:workflow/:tab', to: 'public_health#tab_counts', as: :tab_counts
 

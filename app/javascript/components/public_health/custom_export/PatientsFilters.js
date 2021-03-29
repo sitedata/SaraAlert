@@ -61,9 +61,9 @@ class PatientsFilters extends React.Component {
                   this.props.onQueryChange('tab', 'all');
                 }}
                 value={this.props.query?.workflow}>
-                <option value="all">All</option>
+                {/* <option value="all">All</option> */}
                 <option value="exposure">Exposure</option>
-                <option value="isolation">Isolation</option>
+                {/* <option value="isolation">Isolation</option> */}
               </Form.Control>
             </InputGroup>
           </Col>

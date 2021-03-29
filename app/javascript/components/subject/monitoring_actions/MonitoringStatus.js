@@ -112,7 +112,7 @@ class MonitoringStatus extends React.Component {
         <Modal.Body>
           <p>
             Are you sure you want to change monitoring status to &quot;{this.state.monitoring_status}&quot;?
-            {!this.state.monitoring && <b> This will move the selected record(s) to the Closed line list and turn Continuous Exposure OFF.</b>}
+            {!this.state.monitoring && <b> This will move the selected record(s) to the Closed line list.</b>}
             {this.state.monitoring && <b> This will move the selected record(s) from the Closed line list to the appropriate Active Monitoring line list.</b>}
           </p>
           {this.props.household_members.length > 0 && (
