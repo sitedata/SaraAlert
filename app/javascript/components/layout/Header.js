@@ -33,12 +33,12 @@ class Header extends React.Component {
             <React.Fragment>
               <Nav className="mr-auto" activeKey={this.state.activeKey}>
                 {this.props.current_user?.can_see_enroller_dashboard_tab && (
-                  <Nav.Link className="text-white py-0" href={`${window.BASE_PATH}/oauth/applications`}>
+                  <Nav.Link className="text-white py-0" href={`${window.BASE_PATH}/patients`}>
                     <i className="fas fa-table fa-fw mr-2"></i>Enroller Dashboard
                   </Nav.Link>
                 )}
                 {this.props.current_user?.can_see_monitoring_dashboards_tab && (
-                  <Nav.Link className="text-white py-0" href={`${window.BASE_PATH}/sidekiq`}>
+                  <Nav.Link className="text-white py-0" href={`${window.BASE_PATH}/public_health`}>
                     <i className="fas fa-table fa-fw mr-2"></i>Monitoring Dashboards
                   </Nav.Link>
                 )}

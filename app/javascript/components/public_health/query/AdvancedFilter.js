@@ -101,7 +101,7 @@ class AdvancedFilter extends React.Component {
           type: 'relative',
           hasTimestamp: false,
         },
-        { name: 'continous-exposure', title: 'Continuous Exposure (Boolean)', description: 'Monitorees who have continuous exposure enabled', type: 'boolean' },
+        // { name: 'continous-exposure', title: 'Continuous Exposure (Boolean)', description: 'Monitorees who have continuous exposure enabled', type: 'boolean' },
         {
           name: 'monitoring-status',
           title: 'Active Monitoring (Boolean)',
