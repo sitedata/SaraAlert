@@ -29,6 +29,9 @@ reporting_limit: <%= ENV["SARA_ALERT_REPORTING_LIMIT_MINUTES"] || 15 %>
 # Should Sara Alert send emails?
 enable_email: <%= ENV["SARA_ALERT_ENABLE_EMAIL"] || true %>
 
+# What should the "from address" be on the notification emails?
+email_from_address: <%= ENV["ACTION_MAILER_SMTP_FROM"] || 'notifications@saraalert.org' %>
+
 # Should Sara Alert send SMS messages?
 enable_sms: <%= ENV["SARA_ALERT_ENABLE_SMS"] || true %>
 
