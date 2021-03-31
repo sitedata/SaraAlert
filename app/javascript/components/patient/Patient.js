@@ -695,7 +695,7 @@ class Patient extends React.Component {
                       <th>Name</th>
                       <th>Workflow</th>
                       <th>Monitoring Status</th>
-                      <th>Continuous Exposure?</th>
+                      {/* <th>Continuous Exposure?</th> */}
                     </tr>
                   </thead>
                   <tbody>
@@ -709,7 +709,7 @@ class Patient extends React.Component {
                           </td>
                           <td>{member.isolation ? 'Isolation' : 'Exposure'}</td>
                           <td>{member.monitoring ? 'Actively Monitoring' : 'Not Monitoring'}</td>
-                          <td>{member.continuous_exposure ? 'Yes' : 'No'}</td>
+                          {/* <td>{member.continuous_exposure ? 'Yes' : 'No'}</td> */}
                         </tr>
                       );
                     })}

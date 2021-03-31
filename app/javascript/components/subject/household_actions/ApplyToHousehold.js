@@ -23,7 +23,7 @@ class ApplyToHousehold extends React.Component {
             tooltip: null,
             options: { true: 'Actively Monitoring', false: 'Not Monitoring' },
           },
-          { field: 'continuous_exposure', label: 'Continuous Exposure?', isSortable: true, tooltip: null, options: { true: 'Yes', false: 'No' } },
+          // { field: 'continuous_exposure', label: 'Continuous Exposure?', isSortable: true, tooltip: null, options: { true: 'Yes', false: 'No' } },
         ],
         rowData: props.household_members,
         selectedRows: [],
