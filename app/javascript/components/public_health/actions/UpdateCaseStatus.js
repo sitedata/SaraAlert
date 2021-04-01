@@ -108,7 +108,7 @@ class UpdateCaseStatus extends React.Component {
           diffState: diffState,
         })
         .then(() => {
-          location.href = window.BASE_PATH;
+          location.href = `${window.BASE_PATH}/`;
         })
         .catch(error => {
           reportError(error);
