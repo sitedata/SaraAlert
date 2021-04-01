@@ -71,7 +71,7 @@ class PublicHealthHeader extends React.Component {
               additionalNote: 'Records imported prior to clicking "X" will not be deleted from the system.',
             };
             if (await confirmDialog(confirmText, options)) {
-              location.href = this.props.workflow === 'exposure' ? '/public_health' : '/public_health/isolation';
+              location.href = `${window.BASE_PATH}/public_health/${this.props.workflow === 'exposure' ? '' : 'isolation'}`;
             }
           } else {
             const confirmText = 'You are about to cancel the import process. Are you sure you want to do this?';
