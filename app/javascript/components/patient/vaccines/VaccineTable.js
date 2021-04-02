@@ -276,7 +276,7 @@ class VaccineTable extends React.Component {
     axios.defaults.headers.common['X-CSRF-Token'] = this.props.authenticity_token;
 
     axios
-      put(`${window.BASE_PATH}/vaccines/${currVaccineId}`, {
+      .put(`${window.BASE_PATH}/vaccines/${currVaccineId}`, {
         group_name: updatedVaccineData.group_name,
         product_name: updatedVaccineData.product_name,
         administration_date: updatedVaccineData.administration_date,
