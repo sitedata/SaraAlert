@@ -211,7 +211,7 @@ class MoveToHousehold extends React.Component {
   queryServer = _.debounce(query => {
     axios.defaults.headers.common['X-CSRF-Token'] = this.props.authenticity_token;
     axios
-      .post('/patients/head_of_household_options', {
+      .post(`${window.BASE_PATH}/patients/head_of_household_options`, {
         query,
         cancelToken: this.state.cancelToken.token,
       })
