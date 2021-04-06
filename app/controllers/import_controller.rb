@@ -56,31 +56,23 @@ class ImportController < ApplicationController
 
           begin
             if format == :sara_alert_format
-              if col_num == 95
+              if field == :jurisdiction_path
                 patient[:jurisdiction_id], patient[:jurisdiction_path] = validate_jurisdiction(row[95], row_ind, valid_jurisdiction_ids)
-              elsif col_num == 96
+              elsif field == :assigned_user
                 patient[:assigned_user] = import_assigned_user(row[96])
-              elsif col_num == 85 && workflow == :isolation
+              elsif field == :symptom_onset && workflow == :isolation
                 patient[:user_defined_symptom_onset] = row[85].present?
                 patient[field] = import_field(field, row[col_num], row_ind)
               # TODO: when workflow specific case status validation re-enabled: uncomment
-              # elsif col_num == 86
+              # elsif field == :case_status
               #   patient[field] = validate_workflow_specific_enums(workflow, field, row[col_num], row_ind)
               else
-                # TODO: when workflow specific case status validation re-enabled: this line can be updated to not have to check the 86 col
-                patient[field] = import_field(field, row[col_num], row_ind) unless [85, 86].include?(col_num) && workflow != :isolation
+                # TODO: when workflow specific case status validation re-enabled: this line can be updated to not have to check the case_status field
+                patient[field] = import_field(field, row[col_num], row_ind) unless %i[symptom_onset case_status].include?(field) && workflow != :isolation
               end
             end
 
-            if format == :epix
-              patient[field] = if col_num == 34 # copy over potential exposure country to location
-                                 import_field(field, row[35], row_ind)
-                               elsif [41, 42].include?(col_num) # contact of known case and was in healthcare facilities
-                                 import_field(field, !row[col_num].blank?, row_ind)
-                               else
-                                 import_field(field, row[col_num], row_ind)
-                               end
-            end
+            patient[field] = import_field(field, row[col_num], row_ind) if format == :epix
           rescue ValidationError => e
             @errors << e&.message || "Unknown error on row #{row_ind}"
           rescue StandardError => e
