@@ -104,7 +104,6 @@ class ImportController < ApplicationController
                 @errors << ValidationError.new(error, row_ind).message
               end
             end
-
           end
 
           # Checking for duplicates under current user's viewable patients is acceptable because custom jurisdictions must fall under hierarchy
@@ -216,7 +215,7 @@ class ImportController < ApplicationController
     return nil if value.blank?
     return normalize_and_get_state_name(value) if VALID_STATES.include?(normalize_and_get_state_name(value))
 
-    normalized_state = STATE_ABBREVIATIONS[value.upcase.to_sym]
+    normalized_state = STATE_ABBREVIATIONS[value.to_s.upcase.to_sym]
     return normalized_state if normalized_state
 
     # NOTE: Currently only import allows abbreviated state names. If that changes and we begin allowing abbreviations
@@ -241,7 +240,7 @@ class ImportController < ApplicationController
     normalized_value = normalize_enum_field_value(value)
     return NORMALIZED_ENUMS[field][normalized_value] if NORMALIZED_ENUMS[field].keys.include?(normalized_value)
 
-    normalized_sex = SEX_ABBREVIATIONS[value.upcase.to_sym]
+    normalized_sex = SEX_ABBREVIATIONS[value.to_s.upcase.to_sym]
     normalized_sex || value
   end
 
