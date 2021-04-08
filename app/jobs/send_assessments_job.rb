@@ -5,7 +5,7 @@ class SendAssessmentsJob < ApplicationJob
   queue_as :mailers
 
   def perform(*_args)
-    patient_ids = Patient.reminder_eligible.pluck(:id)
+    patient_ids = Patient.better_reminder_eligible.pluck(:id)
     eligible = patient_ids.size
 
     # Check what the max thread pool is for the DB since that is the limiting factor

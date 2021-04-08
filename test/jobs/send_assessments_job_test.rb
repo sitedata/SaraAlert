@@ -95,10 +95,7 @@ class SendAssessmentsJobTest < ActiveSupport::TestCase
     #
     # NOTE: Expect to need to move items from this list to the ineligible list
     #       above as logic is pulled out of send_assessment and into reminder_eligible
-    scope_not_sent = [
-      { last_date_of_exposure: nil, created_at: 50.days.ago },
-      { last_date_of_exposure: 50.days.ago, created_at: 50.days.ago }
-    ].map do |ineligible_params|
+    scope_not_sent = [].map do |ineligible_params|
       create(
         :patient,
         {
