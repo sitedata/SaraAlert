@@ -113,9 +113,14 @@ class Jurisdiction < ApplicationRecord
 
   def hierarchical_condition_bool_symptoms_string(lang = :en)
     hierarchical_condition = hierarchical_symptomatic_condition
-    bool_symptom_labels = hierarchical_condition.symptoms.where(required: true).collect do |symptom|
+    bool_symptom_labels = hierarchical_condition.symptoms.where(required: true, individual_response: false).collect do |symptom|
       symptom.bool_based_prompt(lang)
     end
     bool_symptom_labels.join(', ')
+  end
+
+  def hierarchical_condition_individual_response_symptoms()
+    # TODO: return promopt in other languages
+    Jurisdiction.last.hierarchical_symptomatic_condition.symptoms.where(individual_response: true).pluck(:name,:prompt)
   end
 end

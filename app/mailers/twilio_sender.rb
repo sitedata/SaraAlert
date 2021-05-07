@@ -62,7 +62,7 @@ class TwilioSender
     from = if params[:medium] == 'VOICE'
              ENV['TWILLIO_SENDING_NUMBER']
            else
-             ENV['TWILLIO_MESSAGING_SERVICE_SID'] || ENV['TWILLIO_SENDING_NUMBER']
+             ENV['TWILLIO_SENDING_NUMBER']
            end
 
     begin

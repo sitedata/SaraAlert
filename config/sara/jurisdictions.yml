@@ -49,6 +49,8 @@
             notes: 'In the past 24 hours, have you used any medicine that reduces fevers?'
             required: false
             threshold_operator: 'Equal'
+            individual_response: true
+            prompt: 'In the past 24 hours, have you used any medicine that reduces fevers?'
             group: 2
         'Chills':
             value: true

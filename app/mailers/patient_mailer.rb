@@ -104,11 +104,14 @@ class PatientMailer < ApplicationMailer
     contents += I18n.t('assessments.sms.prompt.daily3', locale: lang) + patient.jurisdiction.hierarchical_condition_bool_symptoms_string(lang) + '.'
     contents += I18n.t('assessments.sms.prompt.daily4', locale: lang)
     threshold_hash = patient.jurisdiction.jurisdiction_path_threshold_hash
+    individual_questions = patient.jurisdiction.hierarchical_condition_individual_response_symptoms
     # The medium parameter will either be SMS, VOICE or SINGLE_SMS
     params = { prompt: contents, patient_submission_token: patient.submission_token,
                threshold_hash: threshold_hash, medium: 'SMS', language: lang.to_s.split('-').first.upcase,
                try_again: I18n.t('assessments.sms.prompt.try-again', locale: lang),
                max_retries_message: I18n.t('assessments.sms.prompt.max_retries_message', locale: lang),
+               additional_questions_message: "Additionally we have other questions to ask",
+               individual_questions: individual_questions,
                thanks: I18n.t('assessments.sms.prompt.thanks', locale: lang) }
 
     patient.update(last_assessment_reminder_sent: DateTime.now) # Update last send attempt timestamp before Twilio sms assessment
