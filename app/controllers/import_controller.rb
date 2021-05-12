@@ -38,16 +38,24 @@ class ImportController < ApplicationController
 
     # Load and parse patient import excel
     begin
-      xlsx = Roo::Excelx.new(params[:file].tempfile.path, file_warning: :ignore)
-      validate_headers(format, xlsx.sheet(0).row(1))
-      raise ValidationError.new('File must contain at least one monitoree to import', 2) if xlsx.sheet(0).last_row < 2
-      raise ValidationError.new('Please limit each import to 1000 monitorees.', 1000) if xlsx.sheet(0).last_row > 1001
+      if format == :epix
+        csv = CSV.parse(File.read(params[:file].tempfile.path), headers: true)
+        validate_headers(format, csv.headers)
+      else
+        xlsx = Roo::Excelx.new(params[:file].tempfile.path, file_warning: :ignore)
+        validate_headers(format, xlsx.sheet(0).row(1))
+      end
+
+      num_rows = format == :epix ? csv.length : xlsx.sheet(0).last_row
+      raise ValidationError.new('File must contain at least one monitoree to import', 2) if num_rows < 2
+      raise ValidationError.new('Please limit each import to 1000 monitorees.', 1000) if num_rows > 1001
 
       # define patients for duplicate detection here to avoid duplicate queries
       patients_for_duplicate_detection = current_user.viewable_patients
 
-      xlsx.sheet(0).each_with_index do |row, row_ind|
-        next if row_ind.zero? # Skip headers
+      records = format == :sara_alert_format ? xlsx.sheet(0) : csv
+      records.each_with_index do |row, row_ind|
+        next if row_ind.zero? && format == :sara_alert_format # Skip headers for excel file
 
         fields = format == :epix ? EPI_X_FIELDS : SARA_ALERT_FORMAT_FIELDS
         patient = { isolation: workflow == :isolation }
@@ -72,11 +80,21 @@ class ImportController < ApplicationController
               end
             end
 
-            patient[field] = import_field(field, row[col_num], row_ind) if format == :epix
+            if format == :epix
+              patient[field] = if %i[date_of_birth date_of_departure].include?(field)
+                                 import_field(field, Date.strptime(row[col_num], '%m/%d/%Y'), row_ind)
+                               elsif field == :date_of_arrival
+                                 import_field(field, Date.strptime(row[col_num], '%b %d %Y'), row_ind)
+                               else
+                                 import_field(field, row[col_num], row_ind)
+                               end
+            end
+          rescue Date::Error
+            @errors << "Invalid date on row #{row_ind + 1} for #{field}: #{row[col_num]}"
           rescue ValidationError => e
-            @errors << e&.message || "Unknown error on row #{row_ind}"
+            @errors << e&.message || "Unknown error on row #{row_ind + 1}"
           rescue StandardError => e
-            @errors << e&.message || 'Unexpected error'
+            @errors << e&.message || "Unexpected error on row #{row_ind + 1}"
           end
         end
 
@@ -109,14 +127,14 @@ class ImportController < ApplicationController
           # Checking for duplicates under current user's viewable patients is acceptable because custom jurisdictions must fall under hierarchy
           patient[:duplicate_data] = patients_for_duplicate_detection.duplicate_data_detection(patient)
         rescue ValidationError => e
-          @errors << e&.message || "Unknown error on row #{row_ind}"
+          @errors << e&.message || "Unknown error on row #{row_ind + 1}"
         rescue StandardError => e
-          @errors << e&.message || 'Unexpected error'
+          @errors << e&.message || "Unexpected error on row #{row_ind + 1}"
         end
         @patients << patient
       end
     rescue ValidationError => e
-      @errors << e&.message || "Unknown error on row #{row_ind}"
+      @errors << e&.message || "Unknown error on row #{row_ind + 1}"
     rescue Zip::Error
       # Roo throws this if the file is not an excel file
       @errors << 'File Error: Please make sure that your import file is a .xlsx file.'
