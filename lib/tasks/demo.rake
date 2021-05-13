@@ -433,14 +433,13 @@ namespace :demo do
     new_patients = Patient.where('created_at >= ?', beginning_of_day)
     new_patients.update_all('responder_id = id')
 
-    # Create household members (10-20% of patients are managed by a HoH)
-    new_children = new_patients.limit(new_patients.count * rand(10..20) / 100).order('RAND()')
-    new_parents = new_patients - new_children
-    new_children_updates =  new_children.map { |new_child|
-      parent = new_parents.sample
-      { responder_id: parent[:id], jurisdiction_id: parent[:jurisdiction_id] }
-    }
-    Patient.update(new_children.map { |p| p[:id] }, new_children_updates)
+    # Create household members (30-40% of patients are managed by a HoH)
+    dependents = new_patients.limit(new_patients.count * rand(30..40) / 100).order('RAND()')
+    potential_hohs = new_patients - dependents
+    hohs = dependents.length.times.map { potential_hohs.sample }
+    dependent_updates = hohs.map { |hoh| { responder_id: hoh[:id], jurisdiction_id: hoh[:jurisdiction_id] } }
+    Patient.update(dependents.map { |p| p[:id] }, dependent_updates)
+    Patient.update(hohs.map { |p| p[:id] }, hohs.length.times.map { { head_of_household: true } })
 
     # Create first positive lab for patients with no reported symptoms
     laboratories = []

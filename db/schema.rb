@@ -423,7 +423,7 @@ ActiveRecord::Schema.define(version: 2021_05_08_141314) do
     t.string "sexual_orientation"
     t.boolean "user_defined_symptom_onset"
     t.date "extended_isolation"
-    t.boolean "head_of_household"
+    t.boolean "head_of_household", default: false
     t.string "time_zone", default: "America/New_York"
     t.boolean "race_other"
     t.boolean "race_unknown"
