@@ -491,8 +491,15 @@ class PatientsTable extends React.Component {
 
   formatLatestReport = data => {
     const rowData = data.rowData;
+
+    const name = `${rowData.name.split(', ').reverse().join(' ')}`; // name converts `Smith, John` to `John Smith`
+    const timestamp = moment(rowData.latest_report.timestamp);
+    // Generate a string to be read by screen readers stating the relevant information of the latest report
+    let latestReportAsText = `${name}'s last report was ${timestamp.format('MM/DD/YYYY')} at ${timestamp.format('hh:mm a')}.`;
+    latestReportAsText += ` Their latest report ${rowData?.latest_report?.symptomatic ? 'did' : 'did not'} meet the symptomatic logic.`;
+
     return (
-      <Row className="pl-1">
+      <Row className="pl-1" aria-label={latestReportAsText}>
         <Col xs="1" className="align-self-center">
           {!!rowData?.latest_report?.symptomatic && (
             <span data-for={`${rowData.id.toString()}-symptomatic-icon`} data-tip="">
