@@ -25,24 +25,26 @@ class ClosePatientsJob < ApplicationJob
     count = 0
 
     # Close patients who are past the monitoring period (and are actually closable from above logic)
-    patients.each do |patient|
-      count += 1
-      # Update related fields
-      patient[:monitoring] = false
-      patient[:closed_at] = DateTime.now
-      patient[:monitoring_reason] = monitoring_reason
-      patient.save!
+    patients.find_in_batches(batch_size: 15_000) do |group|
+      group.each do |patient|
+        count += 1
+        # Update related fields
+        patient[:monitoring] = false
+        patient[:closed_at] = DateTime.now
+        patient[:monitoring_reason] = monitoring_reason
+        patient.save!
 
-      # Send closed email to patient if they are a reporter
-      PatientMailer.closed_email(patient).deliver_later if completed_message && patient.email.present? && patient.self_reporter_or_proxy?
+        # Send closed email to patient if they are a reporter
+        PatientMailer.closed_email(patient).deliver_later if completed_message && patient.email.present? && patient.self_reporter_or_proxy?
 
-      # History item for automatically closing the record
-      History.record_automatically_closed(patient: patient)
+        # History item for automatically closing the record
+        History.record_automatically_closed(patient: patient)
 
-      closed << { id: patient.id }
-    rescue StandardError => e
-      not_closed << { id: patient.id, reason: e.message }
-      next
+        closed << { id: patient.id }
+      rescue StandardError => e
+        not_closed << { id: patient.id, reason: e.message }
+        next
+      end
     end
 
     {
