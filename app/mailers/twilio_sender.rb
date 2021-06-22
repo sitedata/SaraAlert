@@ -42,11 +42,16 @@ class TwilioSender
     params = { messages_array: messages, medium: 'SINGLE_SMS' }
     from = ENV['TWILLIO_MESSAGING_SERVICE_SID'] || ENV['TWILLIO_SENDING_NUMBER']
     begin
-      @client.studio.v1.flows(ENV['TWILLIO_STUDIO_FLOW']).executions.create(
+      execution_id = @client.studio.v1.flows(ENV['TWILLIO_STUDIO_FLOW']).executions.create(
         to: Phonelib.parse(patient.primary_telephone, 'US').full_e164,
         parameters: params,
         from: from
       )
+      args = {}
+      args[:submission_token] = patient.submission_token
+      args[:job_type] = "Single_SMS"
+      args[:execution_id] = execution_id
+      ExecutionStatusJob().perform_later(args)
     rescue Twilio::REST::RestError => e
       Rails.logger.warn e.error_message
       # The error codes will be caught here in cases where a messaging service is not used
@@ -66,11 +71,18 @@ class TwilioSender
            end
 
     begin
-      @client.studio.v1.flows(ENV['TWILLIO_STUDIO_FLOW']).executions.create(
+      execution_id = @client.studio.v1.flows(ENV['TWILLIO_STUDIO_FLOW']).executions.create(
         to: Phonelib.parse(patient.primary_telephone, 'US').full_e164,
         parameters: params,
         from: from
       )
+      if params[:medium] == 'SMS'
+        args = {}
+        args[:submission_token] = patient.submission_token
+        args[:job_type] = "AssessmentMessage"
+        args[:execution_id] = execution_id
+        ExecutionStatusJob().perform_later(args)
+      end
     rescue Twilio::REST::RestError => e
       Rails.logger.warn e.error_message
       # The error codes will be caught here in cases where a messaging service is not used
