@@ -8,6 +8,9 @@ class Fhir::R4::ApiController < ApplicationApiController
   include FhirHelper
   include ActionController::MimeResponds
 
+  before_action do
+    Rails.logger.info "Authorization token: " + request.headers['Authorization']
+  end
   before_action :cors_headers
   before_action only: %i[create update transaction] do
     doorkeeper_authorize!(
