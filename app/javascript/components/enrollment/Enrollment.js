@@ -240,6 +240,7 @@ class Enrollment extends React.Component {
             <Contact
               currentState={this.state.enrollmentState}
               setEnrollmentState={this.setEnrollmentState}
+              patient={this.props.patient}
               previous={this.previous}
               next={this.next}
               blocked_sms={this.props.blocked_sms}
