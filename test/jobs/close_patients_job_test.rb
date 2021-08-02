@@ -182,24 +182,24 @@ class ClosePatientsJobTest < ActiveSupport::TestCase
     end
   end
 
-  ['SMS Texted Weblink'].each do |preferred_contact_method|
-    # test "does not send closed notification if #{preferred_contact_method} preferred and field is blank" do
-    #   patient = create(:patient,
-    #                    purged: false,
-    #                    isolation: false,
-    #                    monitoring: true,
-    #                    symptom_onset: nil,
-    #                    public_health_action: 'None',
-    #                    latest_assessment_at: Time.now,
-    #                    last_date_of_exposure: 20.days.ago,
-    #                    preferred_contact_method: preferred_contact_method,
-    #                    created_at: 20.days.ago)
+  ['E-mailed Web Link', 'SMS Texted Weblink', 'SMS Text-message'].each do |preferred_contact_method|
+    test "does not send closed notification if #{preferred_contact_method} preferred and field is blank" do
+      patient = create(:patient,
+                       purged: false,
+                       isolation: false,
+                       monitoring: true,
+                       symptom_onset: nil,
+                       public_health_action: 'None',
+                       latest_assessment_at: Time.now,
+                       last_date_of_exposure: 20.days.ago,
+                       preferred_contact_method: preferred_contact_method,
+                       created_at: 20.days.ago)
 
-    #   ClosePatientsJob.perform_now
-    #   method_text = preferred_contact_method == 'E-mailed Web Link' ? 'email' : 'primary phone number'
-    #   assert_histories_contain(patient, "because their preferred contact method, #{method_text}, was blank.")
-    #   assert_histories_contain(patient, 'Monitoree has completed monitoring.')
-    # end
+      ClosePatientsJob.perform_now
+      method_text = preferred_contact_method == 'E-mailed Web Link' ? 'email' : 'primary phone number'
+      assert_histories_contain(patient, "because their preferred contact method, #{method_text}, was blank.")
+      assert_histories_contain(patient, 'Monitoree has completed monitoring.')
+    end
 
     test "sends closed email if closed record is a reporter with #{preferred_contact_method} preferred" do
       Patient.destroy_all
