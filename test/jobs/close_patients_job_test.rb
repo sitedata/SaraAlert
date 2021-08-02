@@ -190,7 +190,7 @@ class ClosePatientsJobTest < ActiveSupport::TestCase
                        monitoring: true,
                        symptom_onset: nil,
                        public_health_action: 'None',
-                       latest_assessment_at: Time.now,
+                       latest_assessment_at: DateTime.now,
                        last_date_of_exposure: 20.days.ago,
                        preferred_contact_method: preferred_contact_method,
                        created_at: 20.days.ago)

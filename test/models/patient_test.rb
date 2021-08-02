@@ -2987,13 +2987,14 @@ class PatientTest < ActiveSupport::TestCase
       1440 * 21
     ].each do |reporting_period|
       ADMIN_OPTIONS['reporting_period_minutes'] = reporting_period
-      [
+      state_params_array = [
         { monitored_address_state: nil, address_state: nil },
         { monitored_address_state: 'california', address_state: nil },
         { monitored_address_state: nil, address_state: 'minnesota' },
         { monitored_address_state: 'montana', address_state: nil },
         { monitored_address_state: nil, address_state: 'florida' }
-      ].each do |state_params|
+      ]
+      state_params_array.each do |state_params|
         patient = create(:patient, state_params)
         # Patient with no reports (latest_report_at is NULL)
         assert_not_nil Patient.has_not_reported_recently.find_by(id: patient.id)
@@ -3044,13 +3045,14 @@ class PatientTest < ActiveSupport::TestCase
       60
     ].each do |monitoring_period|
       ADMIN_OPTIONS['monitoring_period_days'] = monitoring_period
-      [
+      state_params_array = [
         { monitored_address_state: nil, address_state: nil },
         { monitored_address_state: 'minnesota', address_state: nil },
         { monitored_address_state: nil, address_state: 'minnesota' },
         { monitored_address_state: 'montana', address_state: nil },
         { monitored_address_state: nil, address_state: 'florida' }
-      ].each do |state_params|
+      ]
+      state_params_array.each do |state_params|
         # Created now should be in the monitoring period
         patient = create(:patient, state_params)
         assert_not_nil Patient.is_being_monitored.find_by(id: patient.id)
@@ -3157,13 +3159,14 @@ class PatientTest < ActiveSupport::TestCase
       60
     ].each do |monitoring_period|
       ADMIN_OPTIONS['monitoring_period_days'] = monitoring_period
-      [
+      state_params_array = [
         { monitored_address_state: nil, address_state: nil },
         { monitored_address_state: 'minnesota', address_state: nil },
         { monitored_address_state: nil, address_state: 'minnesota' },
         { monitored_address_state: 'montana', address_state: nil },
         { monitored_address_state: nil, address_state: 'florida' }
-      ].each do |state_params|
+      ]
+      state_params_array.each do |state_params|
         # Created now should be in the monitoring period
         patient = create(:patient, state_params)
         assert_nil Patient.end_of_monitoring_period.find_by(id: patient.id)
@@ -3232,13 +3235,14 @@ class PatientTest < ActiveSupport::TestCase
       1440 * 21
     ].each do |reporting_period|
       ADMIN_OPTIONS['reporting_period_minutes'] = reporting_period
-      [
+      state_params_array = [
         { monitored_address_state: nil, address_state: nil },
         { monitored_address_state: 'california', address_state: nil },
         { monitored_address_state: nil, address_state: 'minnesota' },
         { monitored_address_state: 'montana', address_state: nil },
         { monitored_address_state: nil, address_state: 'florida' }
-      ].each do |state_params|
+      ]
+      state_params_array.each do |state_params|
         patient = create(:patient, state_params)
         # Patient with no reports (latest_report_at is NULL)
         assert_not_nil Patient.reminder_not_sent_recently.find_by(id: patient.id)

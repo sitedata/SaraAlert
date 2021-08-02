@@ -127,6 +127,7 @@ class PublicHealthMonitoringImportVerifier < ApplicationSystemTestCase
     sheet = get_xlsx(file_name).sheet(0)
     sleep(2) # wait for db write
     rejects = [] if rejects.nil?
+    address_fields_as_symbols = %i[address_line_1 address_city address_zip address_line_2]
     (2..sheet.last_row).each do |row_num|
       row = sheet.row(row_num)
       patients = jurisdiction.all_patients_excluding_purged.where(first_name: epi_x_val(row, :first_name))
@@ -156,7 +157,7 @@ class PublicHealthMonitoringImportVerifier < ApplicationSystemTestCase
           elsif field == :foreign_address_country
             assert_equal(international_address ? row[index].to_s : '', patient[field].to_s, "#{field} mismatch in row #{row_num}")
           # import address to international address if international
-          elsif international_address && %i[address_line_1 address_city address_zip address_line_2].include?(field)
+          elsif international_address && address_fields_as_symbols.include?(field)
             assert_equal(row[index].to_s, patient[ImportController::FOREIGN_ADDRESS_MAPPINGS[field]].to_s, "#{field} mismatch in row #{row_num}")
           elsif international_address && field == :address_state
             assert_equal(normalize_state_field(row[index].to_s), patient[ImportController::FOREIGN_ADDRESS_MAPPINGS[field]].to_s,
