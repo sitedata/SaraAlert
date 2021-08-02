@@ -229,3 +229,36 @@ Rails/WhereExists:
   Enabled: false
 Rails/AttributeDefaultBlockValue:
   Enabled: true
+Performance/Sum:
+  Enabled: true
+Performance/StringInclude:
+  Enabled: true
+Performance/Squeeze:
+  Enabled: true
+Performance/SortReverse:
+  Enabled: true
+Performance/ReverseFirst:
+  Enabled: true
+Performance/RedundantStringChars:
+  Enabled: true
+Performance/RedundantSplitRegexpArgument:
+  Enabled: true
+Performance/MethodObjectAsBlock:
+  Enabled: true
+Performance/RedundantSortBlock:
+  Enabled: true
+Performance/MapCompact:
+  Enabled: true
+Performance/BigDecimalWithNumericArgument:
+  Enabled: true
+Performance/BlockGivenWithExplicitBlock:
+  Enabled: true
+Performance/RedundantEqualityComparisonBlock:
+  Enabled: true
+Performance/CollectionLiteralInLoop:
+  Enabled: true
+  MinSize: 4
+Performance/ConstantRegexp:
+  Enabled: true
+Performance/AncestorsInclude:
+  Enabled: true
