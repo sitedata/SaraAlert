@@ -1,3 +1,6 @@
+require:
+  - rubocop-performance
+  - rubocop-rails
 AllCops:
   TargetRubyVersion: 2.7
   Exclude:
@@ -175,4 +178,54 @@ Style/RedundantArgument: # (new in 1.4)
   Enabled: true
 Style/SwapValues: # (new in 1.1)
   Enabled: true
-
+Rails/FilePath:
+  Enabled: true
+  EnforcedStyle: arguments
+Style/SafeNavigation:
+  Enabled: false
+Rails/WhereNot:
+  Enabled: true
+Rails/WhereEquals:
+  Enabled: true
+Rails/ShortI18n:
+  Enabled: true
+Rails/Pluck:
+  Enabled: true
+Rails/FindById:
+  Enabled: true
+Rails/I18nLocaleAssignment:
+  Enabled: true
+Rails/UnusedIgnoredColumns:
+  Enabled: true
+Rails/TimeZoneAssignment:
+  Enabled: true
+Rails/Inquiry:
+  Enabled: true
+Rails/NegateInclude:
+  Enabled: true
+Rails/RenderInline:
+  Enabled: true
+Rails/SquishedSQLHeredocs:
+  Enabled: true
+Rails/ActiveRecordCallbacksOrder:
+  Enabled: true
+Rails/AfterCommitOverride:
+  Enabled: true
+Rails/AddColumnIndex:
+  Enabled: true
+Rails/RenderPlainText:
+  Enabled: true
+Rails/MailerName:
+  Enabled: true
+Rails/ExpandedDateRange:
+  Enabled: true
+Rails/EagerEvaluationLogMessage:
+  Enabled: true
+Rails/MatchRoute:
+  Enabled: true
+Rails/PluckInWhere:
+  Enabled: false
+Rails/WhereExists:
+  Enabled: false
+Rails/AttributeDefaultBlockValue:
+  Enabled: true
