@@ -69,7 +69,7 @@ def rows_stats(rows)
     max_latency: rows.map { |row| row['Latency'].to_i }.max,
     avg_elapsed: rows.map { |row| row['elapsed'].to_i }.sum / rows.size,
     max_elapsed: rows.map { |row| row['elapsed'].to_i }.max,
-    failure_percent: rows.filter { |row| row['success'] != 'true' }.size / rows.size
+    failure_percent: (rows.count { |row| row['success'] != 'true' }) / rows.size
   }
 end
 
