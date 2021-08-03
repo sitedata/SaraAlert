@@ -97,8 +97,8 @@ module PatientQueryHelper # rubocop:todo Metrics/ModuleLength
 
     # Validate sorting direction
     direction = query[:direction]
-    raise InvalidQueryError.new(:direction, direction) unless direction.nil? || direction.blank? || %w[asc desc].include?(direction)
-    raise InvalidQueryError.new(:direction, direction) unless (!order.blank? && !direction.blank?) || (order.blank? && direction.blank?)
+    raise InvalidQueryError.new(:direction, direction) unless direction.blank? || %w[asc desc].include?(direction)
+    raise InvalidQueryError.new(:direction, direction) unless (order.present? && direction.present?) || (order.blank? && direction.blank?)
 
     query
   end
@@ -181,7 +181,7 @@ module PatientQueryHelper # rubocop:todo Metrics/ModuleLength
   end
 
   def sort(patients, order, direction)
-    return patients if order.nil? || order.empty? || direction.nil? || direction.blank?
+    return patients if order.blank? || direction.blank?
 
     # Satisfy brakeman with additional sanitation logic
     dir = direction == 'asc' ? 'asc' : 'desc'
@@ -241,7 +241,7 @@ module PatientQueryHelper # rubocop:todo Metrics/ModuleLength
 
   # rubocop:disable Metrics/MethodLength
   def advanced_filter(patients, filters, tz_offset)
-    return patients unless filters.present?
+    return patients if filters.blank?
 
     # Adjust for difference between client and server timezones.
     # NOTE: Adding server timezone offset in cases where the server may not be running in UTC time.
@@ -271,7 +271,7 @@ module PatientQueryHelper # rubocop:todo Metrics/ModuleLength
       when 'monitoring-status'
         patients = patients.where(monitoring: filter[:value].present? ? true : [nil, false])
       when 'preferred-contact-method'
-        patients = patients.where(preferred_contact_method: filter[:value].blank? ? [nil, ''] : filter[:value])
+        patients = patients.where(preferred_contact_method: filter[:value].presence || [nil, ''])
       when 'sms-blocked'
         patients = if filter[:value]
                      patients.where(primary_telephone: BlockedNumber.pluck(:phone_number))
@@ -404,7 +404,7 @@ module PatientQueryHelper # rubocop:todo Metrics/ModuleLength
           )
         )
       when 'monitoring-plan'
-        patients = patients.where(monitoring_plan: filter[:value].blank? ? [nil, ''] : filter[:value])
+        patients = patients.where(monitoring_plan: filter[:value].presence || [nil, ''])
       when 'never-responded'
         patients = if filter[:value]
                      patients.where(latest_assessment_at: nil)
@@ -412,11 +412,11 @@ module PatientQueryHelper # rubocop:todo Metrics/ModuleLength
                      patients.where.not(latest_assessment_at: nil)
                    end
       when 'risk-exposure'
-        patients = patients.where(exposure_risk_assessment: filter[:value].blank? ? [nil, ''] : filter[:value])
+        patients = patients.where(exposure_risk_assessment: filter[:value].presence || [nil, ''])
       when 'require-interpretation'
         patients = patients.where(interpretation_required: filter[:value].present? ? true : [nil, false])
       when 'preferred-contact-time'
-        patients = patients.where(preferred_contact_time: filter[:value].blank? ? [nil, ''] : filter[:value])
+        patients = patients.where(preferred_contact_time: filter[:value].presence || [nil, ''])
       when 'manual-contact-attempts'
         # less/greater-than operators are flipped for where_assoc_count
         operator = :==
@@ -711,7 +711,7 @@ module PatientQueryHelper # rubocop:todo Metrics/ModuleLength
       if fields.include?(:latest_report)
         details[:latest_report] = { timestamp: patient[:latest_assessment_at]&.rfc2822, symptomatic: patient[:latest_assessment_symptomatic] }
       end
-      details[:status] = patient.status.to_s.gsub('_', ' ').sub('exposure ', '')&.sub('isolation ', '') if fields.include?(:status)
+      details[:status] = patient.status.to_s.tr('_', ' ').sub('exposure ', '')&.sub('isolation ', '') if fields.include?(:status)
       details[:report_eligibility] = patient.report_eligibility if fields.include?(:report_eligibility)
       details[:is_hoh] = patient.head_of_household?
       details[:workflow] = patient[:isolation] ? 'Isolation' : 'Exposure' if fields.include?(:workflow)
