@@ -81,7 +81,7 @@ class CacheAnalyticsJob < ApplicationJob
     # This can skew the `>=80` analytics data, so we collect the count of monitoree's over 110 years old
     # And inform the user that that number is bundled in with `>=80`
     # The client will perform the logic to combine the "FAKE_BIRTHDATE" in with `>=80`
-    age_groups = <<-SQL
+    age_groups = <<-SQL.squish
       CASE
         WHEN TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) < 20 THEN '0-19'
         WHEN TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) >= 20 AND TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) < 30 THEN '20-29'
@@ -161,7 +161,7 @@ class CacheAnalyticsJob < ApplicationJob
   # Monitoree counts by race
   def self.monitoree_counts_by_race(analytic_id, monitorees)
     counts = []
-    racial_groups = <<-SQL
+    racial_groups = <<-SQL.squish
       (CASE
         WHEN (COALESCE(white, 0) +
               COALESCE(black_or_african_american, 0) +
@@ -303,10 +303,10 @@ class CacheAnalyticsJob < ApplicationJob
   # Monitoree counts by last date of exposure by weeks
   def self.monitoree_counts_by_last_exposure_week(analytic_id, monitorees)
     counts = []
-    exposure_weeks = <<-SQL
+    exposure_weeks = <<-SQL.squish
       DATE_ADD(last_date_of_exposure, INTERVAL(1 - DAYOFWEEK(last_date_of_exposure)) DAY)
     SQL
-    symptom_onset_weeks = <<-SQL
+    symptom_onset_weeks = <<-SQL.squish
       DATE_ADD(symptom_onset, INTERVAL(1 - DAYOFWEEK(symptom_onset)) DAY)
     SQL
     monitorees.where(isolation: false)
@@ -333,10 +333,10 @@ class CacheAnalyticsJob < ApplicationJob
   # Monitoree counts by last date of exposure by months
   def self.monitoree_counts_by_last_exposure_month(analytic_id, monitorees)
     counts = []
-    exposure_months = <<-SQL
+    exposure_months = <<-SQL.squish
       DATE_FORMAT(last_date_of_exposure, '%Y-%m-01')
     SQL
-    symptom_onset_months = <<-SQL
+    symptom_onset_months = <<-SQL.squish
       DATE_FORMAT(symptom_onset, '%Y-%m-01')
     SQL
 
