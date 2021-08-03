@@ -50,6 +50,7 @@ class History < ApplicationRecord
   belongs_to :original_comment, class_name: 'History', optional: true
 
   # Patient updated_at should not be updated if history was created by a monitoree data download
+  # rubocop:disable Rails/SkipsModelValidations
   after_create(
     proc do
       patient.touch unless [
@@ -59,16 +60,19 @@ class History < ApplicationRecord
       ].include? history_type
     end
   )
+  # rubocop:enable Rails/SkipsModelValidations
 
   # All histories within the given time frame
+  # Time.zone is set by Rails.application.config.time_zone which defaults to UTC.
+  # Therefore, Time.zone.today makes UTC explicit and is consistient with previous behavior.
   scope :in_time_frame, lambda { |time_frame|
     case time_frame
     when 'Last 24 Hours'
       where('histories.created_at >= ?', 24.hours.ago)
     when 'Last 7 Days'
-      where('histories.created_at >= ? AND histories.created_at < ?', 7.days.ago.to_date.to_datetime, Date.today.to_datetime)
+      where('histories.created_at >= ? AND histories.created_at < ?', 7.days.ago.to_date.to_datetime, Time.zone.today.beginning_of_day)
     when 'Last 14 Days'
-      where('histories.created_at >= ? AND histories.created_at < ?', 14.days.ago.to_date.to_datetime, Date.today.to_datetime)
+      where('histories.created_at >= ? AND histories.created_at < ?', 14.days.ago.to_date.to_datetime, Time.zone.today.beginning_of_day)
     when 'Total'
       all
     else
@@ -317,11 +321,11 @@ class History < ApplicationRecord
     }
     return if field[:old_value] == field[:new_value]
 
-    if !history[:updates][:monitoring].blank? && !history[:updates][:monitoring]
+    if history[:updates][:monitoring].present? && !history[:updates][:monitoring]
       # monitoree went from actively monitoring to not monitoring
       history[:note] = ', and chose to "End Monitoring"'
       # monitoree went from exposure to isolation (only applies to when user deliberately selected to continue monitoring in isolation workflow)
-    elsif !history[:patient_before][:isolation].present? && history[:updates][:isolation].present? && !diff_state.nil? && diff_state.include?(:isolation)
+    elsif history[:patient_before][:isolation].blank? && history[:updates][:isolation].present? && !diff_state.nil? && diff_state.include?(:isolation)
       history[:note] = ', and chose to "Continue Monitoring in Isolation Workflow"'
     end
 
@@ -440,7 +444,7 @@ class History < ApplicationRecord
     return if history[:follow_up_reason] == history[:follow_up_reason_before] && history[:follow_up_note] == history[:follow_up_note_before]
 
     comment = "Flagged for Follow-up. Reason: \"#{history[:follow_up_reason]}"
-    comment += ": #{history[:follow_up_note]}" unless history[:follow_up_note].blank?
+    comment += ": #{history[:follow_up_note]}" if history[:follow_up_note].present?
     comment += '"'
 
     create_history(history[:patient], history[:created_by], HISTORY_TYPES[:follow_up_flag], comment, create: create)
@@ -450,7 +454,7 @@ class History < ApplicationRecord
     return if history[:follow_up_reason_before].nil?
 
     comment = 'User cleared flag for follow-up.'
-    comment += " Reason: #{history[:clear_flag_reason]}" unless history[:clear_flag_reason].blank?
+    comment += " Reason: #{history[:clear_flag_reason]}" if history[:clear_flag_reason].present?
 
     create_history(history[:patient], history[:created_by], HISTORY_TYPES[:follow_up_flag], comment, create: create)
   end
@@ -474,9 +478,9 @@ class History < ApplicationRecord
 
     comment = "#{creator} #{verb} #{field[:name]} from #{from_text} to #{to_text}"
     comment += compose_explanation(history, field)
-    comment += history[:note] unless history[:note].blank?
+    comment += history[:note] if history[:note].present?
     comment += '.'
-    comment += " Reason: #{history[:reason]}" unless history[:reason].blank?
+    comment += " Reason: #{history[:reason]}" if history[:reason].present?
     comment
   end
 
