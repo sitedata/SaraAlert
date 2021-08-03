@@ -7,8 +7,8 @@ class Transfer < ApplicationRecord
   belongs_to :who, class_name: 'User'
   belongs_to :patient, touch: true
 
-  after_save :update_patient_linelist_after_save
   before_destroy :update_patient_linelist_before_destroy
+  after_save :update_patient_linelist_after_save
 
   def from_path
     return 'Unknown Jurisdiction' if from_jurisdiction.blank?
@@ -23,14 +23,16 @@ class Transfer < ApplicationRecord
   end
 
   # All transfers within the given time frame
+  # Time.zone is set by Rails.application.config.time_zone which defaults to UTC.
+  # Therefore, Time.zone.today makes UTC explicit and is consistient with previous behavior.
   scope :in_time_frame, lambda { |time_frame|
     case time_frame
     when 'Last 24 Hours'
       where('transfers.created_at >= ?', 24.hours.ago)
     when 'Last 7 Days'
-      where('transfers.created_at >= ? AND transfers.created_at < ?', 7.days.ago.to_date.to_datetime, Date.today.to_datetime)
+      where('transfers.created_at >= ? AND transfers.created_at < ?', 7.days.ago.to_date.to_datetime, Time.zone.today.beginning_of_day)
     when 'Last 14 Days'
-      where('transfers.created_at >= ? AND transfers.created_at < ?', 14.days.ago.to_date.to_datetime, Date.today.to_datetime)
+      where('transfers.created_at >= ? AND transfers.created_at < ?', 14.days.ago.to_date.to_datetime, Time.zone.today.beginning_of_day)
     when 'Total'
       all
     else
