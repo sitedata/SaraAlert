@@ -115,25 +115,23 @@ class Patient < ApplicationRecord
 
   belongs_to :responder, class_name: 'Patient'
   belongs_to :creator, class_name: 'User'
-  has_many :dependents, class_name: 'Patient', foreign_key: 'responder_id'
-  has_many :assessments
+  has_many :dependents, class_name: 'Patient', foreign_key: 'responder_id', inverse_of: 'responder', dependent: nil
+  has_many :assessments, dependent: nil
   belongs_to :jurisdiction
-  has_many :histories
-  has_many :transfers
-  has_many :laboratories
-  has_many :vaccines
-  has_many :close_contacts
-  has_many :contact_attempts
+  has_many :histories, dependent: nil
+  has_many :transfers, dependent: nil
+  has_many :laboratories, dependent: nil
+  has_many :vaccines, dependent: nil
+  has_many :close_contacts, dependent: nil
+  has_many :contact_attempts, dependent: nil
 
+  around_save :inform_responder, if: :responder_id_changed?
+  before_create :set_time_zone
   before_update :set_time_zone, if: proc { |patient|
     patient.monitored_address_state_changed? || patient.address_state_changed?
   }
-  before_create :set_time_zone
-
-  around_save :inform_responder, if: :responder_id_changed?
-  around_destroy :inform_responder
   before_update :handle_update
-
+  around_destroy :inform_responder
   accepts_nested_attributes_for :laboratories, :vaccines
 
   # Most recent assessment
@@ -237,8 +235,8 @@ class Patient < ApplicationRecord
         # HoH is unconditionally ineligible if it has paused notifications
         pause_notifications: false
       )
-      .where('dependents_patients.monitoring = ?', true)
-      .where('dependents_patients.purged = ?', false)
+      .where(dependent_patients: { monitoring: true })
+      .where(dependent_patients: { purged: true })
       .where(
         'dependents_patients.isolation = ? '\
         'OR dependents_patients.continuous_exposure = ? '\
@@ -457,6 +455,8 @@ class Patient < ApplicationRecord
   }
 
   # Individuals that meet the asymptomatic recovery definition (isolation workflow only)
+  # Time.zone is set by Rails.application.config.time_zone which defaults to UTC.
+  # Therefore, Time.zone.today makes UTC explicit and is consistient with previous behavior.
   scope :isolation_asymp_non_test_based, lambda {
     where(monitoring: true)
       .where(purged: false)
@@ -464,28 +464,32 @@ class Patient < ApplicationRecord
       .where(symptom_onset: nil)
       .where.not(latest_assessment_at: nil)
       .where('first_positive_lab_at < ?', 10.days.ago)
-      .where('extended_isolation IS NULL OR extended_isolation < ?', Date.today)
+      .where('extended_isolation IS NULL OR extended_isolation < ?', Time.zone.today)
   }
 
   # Individuals that meet the symptomatic non test based review requirement (isolation workflow only)
+  # Time.zone is set by Rails.application.config.time_zone which defaults to UTC.
+  # Therefore, Time.zone.today makes UTC explicit and is consistient with previous behavior.
   scope :isolation_symp_non_test_based, lambda {
     where(monitoring: true)
       .where(purged: false)
       .where(isolation: true)
       .where('symptom_onset <= ?', 10.days.ago)
       .where(latest_fever_or_fever_reducer_at: nil)
-      .where('extended_isolation IS NULL OR extended_isolation < ?', Date.today)
+      .where('extended_isolation IS NULL OR extended_isolation < ?', Time.zone.today)
       .or(
         where(monitoring: true)
         .where(purged: false)
         .where(isolation: true)
         .where('symptom_onset <= ?', 10.days.ago)
         .where('latest_fever_or_fever_reducer_at < ?', 24.hours.ago)
-        .where('extended_isolation IS NULL OR extended_isolation < ?', Date.today)
+        .where('extended_isolation IS NULL OR extended_isolation < ?', Time.zone.today)
       )
   }
 
   # Individuals that meet the test based review requirement (isolation workflow only)
+  # Time.zone is set by Rails.application.config.time_zone which defaults to UTC.
+  # Therefore, Time.zone.today makes UTC explicit and is consistient with previous behavior.
   scope :isolation_test_based, lambda {
     where(monitoring: true)
       .where(purged: false)
@@ -493,7 +497,7 @@ class Patient < ApplicationRecord
       .where.not(latest_assessment_at: nil)
       .where(latest_fever_or_fever_reducer_at: nil)
       .where('negative_lab_count >= ?', 2)
-      .where('extended_isolation IS NULL OR extended_isolation < ?', Date.today)
+      .where('extended_isolation IS NULL OR extended_isolation < ?', Time.zone.today)
       .or(
         where(monitoring: true)
         .where(purged: false)
@@ -501,7 +505,7 @@ class Patient < ApplicationRecord
         .where.not(latest_assessment_at: nil)
         .where('latest_fever_or_fever_reducer_at < ?', 24.hours.ago)
         .where('negative_lab_count >= ?', 2)
-        .where('extended_isolation IS NULL OR extended_isolation < ?', Date.today)
+        .where('extended_isolation IS NULL OR extended_isolation < ?', Time.zone.today)
       )
   }
 
@@ -605,14 +609,16 @@ class Patient < ApplicationRecord
   }
 
   # All individuals enrolled within the given time frame
+  # Time.zone is set by Rails.application.config.time_zone which defaults to UTC.
+  # Therefore, Time.zone.today makes UTC explicit and is consistient with previous behavior.
   scope :enrolled_in_time_frame, lambda { |time_frame|
     case time_frame
     when 'Last 24 Hours'
       where('patients.created_at >= ?', 24.hours.ago)
     when 'Last 7 Days'
-      where('patients.created_at >= ? AND patients.created_at < ?', 7.days.ago.to_date.to_datetime, Date.today.to_datetime)
+      where('patients.created_at >= ? AND patients.created_at < ?', 7.days.ago.to_date.to_datetime, Time.zone.today.beginning_of_day)
     when 'Last 14 Days'
-      where('patients.created_at >= ? AND patients.created_at < ?', 14.days.ago.to_date.to_datetime, Date.today.to_datetime)
+      where('patients.created_at >= ? AND patients.created_at < ?', 14.days.ago.to_date.to_datetime, Time.zone.today.beginning_of_day)
     when 'Total'
       all
     else
@@ -621,14 +627,16 @@ class Patient < ApplicationRecord
   }
 
   # All individuals closed within the given time frame
+  # Time.zone is set by Rails.application.config.time_zone which defaults to UTC.
+  # Therefore, Time.zone.today makes UTC explicit and is consistient with previous behavior.
   scope :closed_in_time_frame, lambda { |time_frame|
     case time_frame
     when 'Last 24 Hours'
       where('patients.closed_at >= ?', 24.hours.ago)
     when 'Last 7 Days'
-      where('patients.closed_at >= ? AND patients.closed_at < ?', 7.days.ago.to_date.to_datetime, Date.today.to_datetime)
+      where('patients.closed_at >= ? AND patients.closed_at < ?', 7.days.ago.to_date.to_datetime, Time.zone.today.beginning_of_day)
     when 'Last 14 Days'
-      where('patients.closed_at >= ? AND patients.closed_at < ?', 14.days.ago.to_date.to_datetime, Date.today.to_datetime)
+      where('patients.closed_at >= ? AND patients.closed_at < ?', 14.days.ago.to_date.to_datetime, Time.zone.today.beginning_of_day)
     when 'Total'
       all
     else
@@ -793,7 +801,7 @@ class Patient < ApplicationRecord
 
   # Order individuals based on their public health assigned risk assessment
   def self.order_by_risk(asc: true)
-    order_by = <<~SQL
+    order_by = <<~SQL.squish
       CASE
       WHEN exposure_risk_assessment='High' THEN 0
       WHEN exposure_risk_assessment='Medium' THEN 1
@@ -803,7 +811,7 @@ class Patient < ApplicationRecord
       END
     SQL
 
-    order_by_rev = <<~SQL
+    order_by_rev = <<~SQL.squish
       CASE
       WHEN exposure_risk_assessment IS NULL THEN 4
       WHEN exposure_risk_assessment='High' THEN 3
@@ -817,14 +825,14 @@ class Patient < ApplicationRecord
 
   # Order individuals based if they are or are not flagged for follow-up
   def self.order_by_follow_up_flag(asc: true)
-    order_by = <<~SQL
+    order_by = <<~SQL.squish
       CASE
       WHEN follow_up_reason IS NOT NULL THEN 0
       WHEN follow_up_reason IS NULL THEN 1
       END
     SQL
 
-    order_by_rev = <<~SQL
+    order_by_rev = <<~SQL.squish
       CASE
       WHEN follow_up_reason IS NOT NULL THEN 1
       WHEN follow_up_reason IS NULL THEN 0
@@ -898,7 +906,7 @@ class Patient < ApplicationRecord
   def self.responder_for_number(tel_number)
     return nil if tel_number.nil?
 
-    where('primary_telephone = ?', tel_number)
+    where(primary_telephone: tel_number)
       .where('responder_id = id')
   end
 
@@ -907,7 +915,7 @@ class Patient < ApplicationRecord
   def self.responder_for_email(email)
     return nil if email.nil?
 
-    where('email = ?', email)
+    where(email: email)
       .where('responder_id = id')
   end
 
@@ -1242,7 +1250,7 @@ class Patient < ApplicationRecord
   # Otherwise, return 8am local time the next day.
   def time_to_notify_closed
     patient_local_time = Time.now.getlocal(address_timezone_offset)
-    return patient_local_time if (8..19).include? patient_local_time.hour
+    return patient_local_time if (8..19).cover?(patient_local_time.hour)
 
     return patient_local_time.change(hour: 8, min: 0) if patient_local_time.hour < 8
 
