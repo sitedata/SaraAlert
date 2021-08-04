@@ -221,6 +221,7 @@ class Patient < ApplicationRecord
   #   patient last date of exposure is on or after (today - monitoring_period_days)
   #   OR
   #   patient last date of exposure is null and created at of exposure is on or after (today - monitoring_period_days)
+  # rubocop:disable Rails/WhereEquals
   scope :has_eligible_dependents, lambda {
     joins(:dependents)
       .where(purged: false)
@@ -235,8 +236,8 @@ class Patient < ApplicationRecord
         # HoH is unconditionally ineligible if it has paused notifications
         pause_notifications: false
       )
-      .where(dependent_patients: { monitoring: true })
-      .where(dependent_patients: { purged: true })
+      .where('dependents_patients.monitoring = ?', true)
+      .where('dependents_patients.purged = ?', false)
       .where(
         'dependents_patients.isolation = ? '\
         'OR dependents_patients.continuous_exposure = ? '\
@@ -255,6 +256,7 @@ class Patient < ApplicationRecord
       .within_preferred_contact_time
       .reminder_not_sent_recently
   }
+  # rubocop:enable Rails/WhereEquals
 
   # Patients should be monitored are any of the below:
   # - In isolation

@@ -61,7 +61,7 @@ class Symptom < ApplicationRecord
   private
 
   def update_patient_linelist_after_save
-    patient = Patient.joins(assessments: :reported_condition).where(conditions: condition_id).first
+    patient = Patient.joins(assessments: :reported_condition).where(conditions: { id: condition_id }).first
     return unless patient
 
     patient.update(
@@ -72,7 +72,7 @@ class Symptom < ApplicationRecord
   end
 
   def update_patient_linelist_before_destroy
-    patient = Patient.joins(assessments: :reported_condition).where(conditions: condition_id).first
+    patient = Patient.joins(assessments: :reported_condition).where(conditions: { id: condition_id}).first
     return unless patient
 
     patient.update(
