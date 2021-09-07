@@ -6,7 +6,7 @@ require 'test_case'
 class PatientQueryHelperTest < ActionView::TestCase
   # --- BOOLEAN ADVANCED FILTER QUERIES --- #
 
-  test 'advanced filter blocked sms properly filters those with blocked numbers' do
+  test 'advanced filter blocked sms' do
     Patient.destroy_all
     user = create(:public_health_enroller_user)
     patient_1 = create(:patient, creator: user, primary_telephone: '1111111111')
@@ -76,6 +76,40 @@ class PatientQueryHelperTest < ActionView::TestCase
     filters[0][:value] = false
     filtered_patients = advanced_filter(patients, filters, tz_offset)
     filtered_patients_array = [patient_1, patient_2, patient_3]
+    assert_equal filtered_patients_array.pluck(:id), filtered_patients.pluck(:id)
+  end
+
+  test 'advanced filter unenrolled close contact' do
+    Patient.destroy_all
+    user = create(:public_health_enroller_user)
+    patient_1 = create(:patient, creator: user)
+    create(:close_contact, patient: patient_1)
+    create(:close_contact, patient: patient_1, enrolled_id: 111)
+    patient_2 = create(:patient, creator: user)
+    create(:close_contact, patient: patient_2)
+    create(:close_contact, patient: patient_2)
+    patient_3 = create(:patient, creator: user)
+    create(:close_contact, patient: patient_3, enrolled_id: 333)
+    create(:close_contact, patient: patient_3, enrolled_id: 334)
+    create(:close_contact, patient: patient_3, enrolled_id: 335)
+    patient_4 = create(:patient, creator: user)
+
+    patients = Patient.all
+
+    filters = [{ filterOption: {}, additionalFilterOption: nil, value: nil }]
+    filters[0][:filterOption]['name'] = 'unenrolled-close-contact'
+    tz_offset = 300
+
+    # Check for monitorees who have at least one unenrolled close contact
+    filters[0][:value] = true
+    filtered_patients = advanced_filter(patients, filters, tz_offset)
+    filtered_patients_array = [patient_1, patient_2]
+    assert_equal filtered_patients_array.pluck(:id), filtered_patients.pluck(:id)
+
+    # Check for monitorees who have no close contacts or only enrolled close contacts
+    filters[0][:value] = false
+    filtered_patients = advanced_filter(patients, filters, tz_offset)
+    filtered_patients_array = [patient_3, patient_4]
     assert_equal filtered_patients_array.pluck(:id), filtered_patients.pluck(:id)
   end
 
@@ -562,24 +596,24 @@ class PatientQueryHelperTest < ActionView::TestCase
     Patient.destroy_all
     user = create(:public_health_enroller_user)
     patient_1 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_1, product_name: 'Moderna COVID-19 Vaccine (Non-US tradename: Spikevax)')
-    create(:vaccine, patient: patient_1, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)')
+    create(:vaccine, patient: patient_1, product_name: 'Moderna COVID-19 Vaccine (non-US Spikevax)')
+    create(:vaccine, patient: patient_1, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)')
     patient_2 = create(:patient, creator: user)
     create(:vaccine, patient: patient_2, product_name: 'Janssen (J&J) COVID-19 Vaccine')
     patient_3 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_3, product_name: 'Moderna COVID-19 Vaccine (Non-US tradename: Spikevax)')
+    create(:vaccine, patient: patient_3, product_name: 'Moderna COVID-19 Vaccine (non-US Spikevax)')
     patient_4 = create(:patient, creator: user)
     create(:vaccine, patient: patient_4, product_name: 'Unknown')
     patient_5 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_5, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)')
-    create(:vaccine, patient: patient_5, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)')
+    create(:vaccine, patient: patient_5, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)')
+    create(:vaccine, patient: patient_5, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)')
     patient_6 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_6, product_name: 'Moderna COVID-19 Vaccine (Non-US tradename: Spikevax)')
-    create(:vaccine, patient: patient_6, product_name: 'Moderna COVID-19 Vaccine (Non-US tradename: Spikevax)')
+    create(:vaccine, patient: patient_6, product_name: 'Moderna COVID-19 Vaccine (non-US Spikevax)')
+    create(:vaccine, patient: patient_6, product_name: 'Moderna COVID-19 Vaccine (non-US Spikevax)')
     create(:patient, creator: user)
 
     patients = Patient.all
-    filters = [{ filterOption: {}, value: [{ name: 'product-name', value: 'Moderna COVID-19 Vaccine (Non-US tradename: Spikevax)' }] }]
+    filters = [{ filterOption: {}, value: [{ name: 'product-name', value: 'Moderna COVID-19 Vaccine (non-US Spikevax)' }] }]
     filters[0][:filterOption]['name'] = 'vaccination'
     tz_offset = 300
     filtered_patients = advanced_filter(patients, filters, tz_offset)
@@ -680,29 +714,29 @@ class PatientQueryHelperTest < ActionView::TestCase
     Patient.destroy_all
     user = create(:public_health_enroller_user)
     patient_1 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_1, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: '1')
-    create(:vaccine, patient: patient_1, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: '2')
+    create(:vaccine, patient: patient_1, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: '1')
+    create(:vaccine, patient: patient_1, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: '2')
     patient_2 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_2, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: 'Unknown')
+    create(:vaccine, patient: patient_2, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: 'Unknown')
     patient_3 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_3, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: nil)
+    create(:vaccine, patient: patient_3, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: nil)
     patient_4 = create(:patient, creator: user)
     create(:vaccine, patient: patient_4, product_name: 'Janssen (J&J) COVID-19 Vaccine', dose_number: '1')
     patient_5 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_5, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: '1')
+    create(:vaccine, patient: patient_5, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: '1')
     create(:vaccine, patient: patient_5, product_name: 'Janssen (J&J) COVID-19 Vaccine', dose_number: '1')
     create(:vaccine, patient: patient_5, product_name: 'Unknown', dose_number: 'Unknown')
-    create(:vaccine, patient: patient_5, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: '2')
+    create(:vaccine, patient: patient_5, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: '2')
     patient_6 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_6, product_name: 'Moderna COVID-19 Vaccine (Non-US tradename: Spikevax)', dose_number: '1')
-    create(:vaccine, patient: patient_6, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: '2')
+    create(:vaccine, patient: patient_6, product_name: 'Moderna COVID-19 Vaccine (non-US Spikevax)', dose_number: '1')
+    create(:vaccine, patient: patient_6, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: '2')
     patient_7 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_7, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: '1')
+    create(:vaccine, patient: patient_7, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: '1')
     create(:patient, creator: user)
 
     patients = Patient.all
     filters = [{ filterOption: {},
-                 value: [{ name: 'product-name', value: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)' }, { name: 'dose-number', value: '1' }] }]
+                 value: [{ name: 'product-name', value: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)' }, { name: 'dose-number', value: '1' }] }]
     filters[0][:filterOption]['name'] = 'vaccination'
     tz_offset = 300
     filtered_patients = advanced_filter(patients, filters, tz_offset)
@@ -714,42 +748,42 @@ class PatientQueryHelperTest < ActionView::TestCase
     Patient.destroy_all
     user = create(:public_health_enroller_user)
     patient_1 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_1, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_1, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: '1')
-    create(:vaccine, patient: patient_1, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_1, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 4, 11), dose_number: '2')
     patient_2 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_2, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_2, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: 'Unknown')
     patient_3 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_3, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_3, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 25), dose_number: '1')
     patient_4 = create(:patient, creator: user)
     create(:vaccine, patient: patient_4, group_name: 'COVID-19', product_name: 'Janssen (J&J) COVID-19 Vaccine',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: '1')
     patient_5 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: '1')
     create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Janssen (J&J) COVID-19 Vaccine',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: '1')
     create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Unknown', administration_date: DateTime.new(2021, 3, 24),
                      dose_number: 'Unknown')
-    create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 4, 13), dose_number: '2')
     patient_6 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_6, group_name: 'COVID-19', product_name: 'Moderna COVID-19 Vaccine (Non-US tradename: Spikevax)',
+    create(:vaccine, patient: patient_6, group_name: 'COVID-19', product_name: 'Moderna COVID-19 Vaccine (non-US Spikevax)',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: '1')
-    create(:vaccine, patient: patient_6, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_6, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 4, 11), dose_number: '2')
     patient_7 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: '1')
     create(:patient, creator: user)
 
     patients = Patient.all
     filters = [{ filterOption: {},
                  value: [{ name: 'vaccine-group', value: 'COVID-19' },
-                         { name: 'product-name', value: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)' },
+                         { name: 'product-name', value: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)' },
                          { name: 'administration-date', value: { when: 'before', date: '2021-03-25' } },
                          { name: 'dose-number', value: '1' }] }]
     filters[0][:filterOption]['name'] = 'vaccination'
@@ -763,32 +797,32 @@ class PatientQueryHelperTest < ActionView::TestCase
     Patient.destroy_all
     user = create(:public_health_enroller_user)
     patient_1 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_1, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: '1')
-    create(:vaccine, patient: patient_1, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: '2')
+    create(:vaccine, patient: patient_1, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: '1')
+    create(:vaccine, patient: patient_1, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: '2')
     patient_2 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_2, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: 'Unknown')
+    create(:vaccine, patient: patient_2, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: 'Unknown')
     patient_3 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_3, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: nil)
+    create(:vaccine, patient: patient_3, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: nil)
     patient_4 = create(:patient, creator: user)
     create(:vaccine, patient: patient_4, product_name: 'Janssen (J&J) COVID-19 Vaccine', dose_number: '1')
     patient_5 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_5, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: '1')
+    create(:vaccine, patient: patient_5, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: '1')
     create(:vaccine, patient: patient_5, product_name: 'Janssen (J&J) COVID-19 Vaccine', dose_number: '1')
     create(:vaccine, patient: patient_5, product_name: 'Unknown', dose_number: 'Unknown')
-    create(:vaccine, patient: patient_5, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: '2')
+    create(:vaccine, patient: patient_5, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: '2')
     patient_6 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_6, product_name: 'Moderna COVID-19 Vaccine (Non-US tradename: Spikevax)', dose_number: '1')
-    create(:vaccine, patient: patient_6, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: '2')
+    create(:vaccine, patient: patient_6, product_name: 'Moderna COVID-19 Vaccine (non-US Spikevax)', dose_number: '1')
+    create(:vaccine, patient: patient_6, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: '2')
     patient_7 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_7, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)', dose_number: '1')
+    create(:vaccine, patient: patient_7, product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)', dose_number: '1')
     create(:patient, creator: user)
 
     patients = Patient.all
     filter_option_1 = { filterOption: {},
-                        value: [{ name: 'product-name', value: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)' },
+                        value: [{ name: 'product-name', value: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)' },
                                 { name: 'dose-number', value: '1' }] }
     filter_option_2 = { filterOption: {},
-                        value: [{ name: 'product-name', value: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)' },
+                        value: [{ name: 'product-name', value: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)' },
                                 { name: 'dose-number', value: '2' }] }
     filter_option_1[:filterOption]['name'] = 'vaccination'
     filter_option_2[:filterOption]['name'] = 'vaccination'
@@ -803,56 +837,56 @@ class PatientQueryHelperTest < ActionView::TestCase
     Patient.destroy_all
     user = create(:public_health_enroller_user)
     patient_1 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_1, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_1, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: '1')
-    create(:vaccine, patient: patient_1, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_1, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 4, 11), dose_number: '2')
     patient_2 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_2, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_2, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: '1')
     patient_3 = create(:patient, creator: user)
     create(:vaccine, patient: patient_3, group_name: 'COVID-19', product_name: 'Unknown', administration_date: DateTime.new(2021, 3, 26),
                      dose_number: 'Unknown')
     patient_4 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_4, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_4, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: '1')
     create(:vaccine, patient: patient_4, group_name: 'COVID-19', product_name: 'Unknown', administration_date: DateTime.new(2021, 3, 26), dose_number: nil)
     patient_5 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 25), dose_number: '1')
-    create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 4, 18), dose_number: '2')
-    create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: 'Unknown')
-    create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: nil)
-    create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Moderna COVID-19 Vaccine (Non-US tradename: Spikevax)',
+    create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Moderna COVID-19 Vaccine (non-US Spikevax)',
                      administration_date: DateTime.new(2021, 3, 25),
                      dose_number: '1')
     create(:vaccine, patient: patient_5, group_name: 'COVID-19', product_name: 'Unknown', administration_date: DateTime.new(2021, 3, 26), dose_number: nil)
     patient_6 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_6, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_6, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: '1')
-    create(:vaccine, patient: patient_6, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_6, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 26), dose_number: nil)
     create(:vaccine, patient: patient_6, group_name: 'COVID-19', product_name: 'Unknown', administration_date: DateTime.new(2021, 3, 25), dose_number: nil)
     create(:vaccine, patient: patient_6, group_name: 'COVID-19', product_name: 'Unknown', administration_date: DateTime.new(2021, 3, 5), dose_number: nil)
     create(:vaccine, patient: patient_6, group_name: 'COVID-19', product_name: 'Unknown', administration_date: DateTime.new(2021, 3, 26), dose_number: '2')
     patient_7 = create(:patient, creator: user)
-    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: '1')
-    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 25), dose_number: '1')
-    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 4, 18), dose_number: '2')
-    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: 'Unknown')
-    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 24), dose_number: nil)
-    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Moderna COVID-19 Vaccine (Non-US tradename: Spikevax)',
+    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Moderna COVID-19 Vaccine (non-US Spikevax)',
                      administration_date: DateTime.new(2021, 3, 25),
                      dose_number: '1')
-    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)',
+    create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)',
                      administration_date: DateTime.new(2021, 3, 26), dose_number: nil)
     create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Unknown', administration_date: DateTime.new(2021, 3, 25), dose_number: nil)
     create(:vaccine, patient: patient_7, group_name: 'COVID-19', product_name: 'Unknown', administration_date: DateTime.new(2021, 3, 5), dose_number: nil)
@@ -863,7 +897,7 @@ class PatientQueryHelperTest < ActionView::TestCase
     patients = Patient.all
     filter_option_1 = { filterOption: {},
                         value: [{ name: 'vaccine-group', value: 'COVID-19' },
-                                { name: 'product-name', value: 'Pfizer-BioNTech COVID-19 Vaccine (Tradename: COMIRNATY)' },
+                                { name: 'product-name', value: 'Pfizer-BioNTech COVID-19 Vaccine (COMIRNATY)' },
                                 { name: 'administration-date', value: { when: 'before', date: '2021-03-25' } },
                                 { name: 'dose-number', value: '1' }] }
     filter_option_2 = { filterOption: {},
