@@ -95,7 +95,7 @@
                 "{{widgets.sms_assessment_prompt.inbound.Body}}"
               ],
               "type": "matches_any_of",
-              "value": "yes,Yes,YES,Yes.,“Yes”,yes”,“Yes.“,yeah,YEAH,Yeah,“yeah”,“Yeah”,si,Si,sí,SI,SÍ,oui,OUI,Oui,oui.,OUI.,Oui.,Haa, HAA,Haa.,HAA.,네,네.,Co,Co.,co,co.,Да,Да.,да,да.,ДA,ДA.,Da,Da.,da,da.,نعم,نعم."
+              "value": "yes,Yes,YES,Yes.,“Yes”,yes”,“Yes.“,yeah,YEAH,Yeah,“yeah”,“Yeah”,si,Si,sí,SI,SÍ,oui,OUI,Oui,oui.,OUI.,Oui.,Haa, HAA,Haa.,HAA.,네,네.,Co,Co.,co,co.,Да,Да.,да,да.,ДA,ДA.,Da,Da.,da,da.,نعم,نعم.,是,是."
             }
           ]
         },
@@ -109,7 +109,7 @@
                 "{{widgets.sms_assessment_prompt.inbound.Body}}"
               ],
               "type": "matches_any_of",
-              "value": "no,No,NO.,No.,“No”,“no”,“No.“,nope,NOPE,“nope”,“Nope”,Nope,“Nope”,Non,non,NON,Non. NON.,non.,Maya,MAYA,maya,Maya.,maya.,MAYA.,아니요,아니요.,Không,Không.,không,không.,Khong,Khong.,khong,khong.,Ko,Ko.ko,ko.,Нет,Нет.,нет,нет.,НЕТ,НЕТ.,niet,niet.,nyet,nyet.,لا,لا."
+              "value": "no,No,NO.,No.,“No”,“no”,“No.“,nope,NOPE,“nope”,“Nope”,Nope,“Nope”,Non,non,NON,Non. NON.,non.,Maya,MAYA,maya,Maya.,maya.,MAYA.,아니요,아니요.,Không,Không.,không,không.,Khong,Khong.,khong,khong.,Ko,Ko.ko,ko.,Нет,Нет.,нет,нет.,НЕТ,НЕТ.,niet,niet.,nyet,nyet.,لا,لا.,否,否."
             }
           ]
         }
@@ -192,7 +192,7 @@
                 "{{widgets.bad_response.inbound.Body}}"
               ],
               "type": "matches_any_of",
-              "value": "yes,Yes,YES,Yes.,“Yes”,yes”,“Yes.“,yeah,YEAH,Yeah,“yeah”,“Yeah”,si,Si,sí,SI,SÍ,oui,OUI,Oui,oui.,OUI.,Oui.,Haa, HAA,Haa.,HAA.,네,네.,Co,Co.,co,co.,Да,Да.,да,да.,ДA,ДA.,Da,Da.,da,da.,نعم,نعم."
+              "value": "yes,Yes,YES,Yes.,“Yes”,yes”,“Yes.“,yeah,YEAH,Yeah,“yeah”,“Yeah”,si,Si,sí,SI,SÍ,oui,OUI,Oui,oui.,OUI.,Oui.,Haa, HAA,Haa.,HAA.,네,네.,Co,Co.,co,co.,Да,Да.,да,да.,ДA,ДA.,Da,Da.,da,da.,نعم,نعم.,是,是."
             }
           ]
         },
@@ -206,7 +206,7 @@
                 "{{widgets.bad_response.inbound.Body}}"
               ],
               "type": "matches_any_of",
-              "value": "no,No,NO.,No.,“No”,“no”,“No.“,nope,NOPE,“nope”,“Nope”,Nope,“Nope”,Non,non,NON,Non. NON.,non.,Maya,MAYA,maya,Maya.,maya.,MAYA.,아니요,아니요.,Không,Không.,không,không.,Khong,Khong.,khong,khong.,Ko,Ko.ko,ko.,Нет,Нет.,нет,нет.,НЕТ,НЕТ.,niet,niet.,nyet,nyet.,لا,لا."
+              "value": "no,No,NO.,No.,“No”,“no”,“No.“,nope,NOPE,“nope”,“Nope”,Nope,“Nope”,Non,non,NON,Non. NON.,non.,Maya,MAYA,maya,Maya.,maya.,MAYA.,아니요,아니요.,Không,Không.,không,không.,Khong,Khong.,khong,khong.,Ko,Ko.ko,ko.,Нет,Нет.,нет,нет.,НЕТ,НЕТ.,niet,niet.,nyet,nyet.,لا,لا.,否,否."
             }
           ]
         }
@@ -355,7 +355,7 @@
                 "{{widgets.voice_reply_to_prompt.SpeechResult}}"
               ],
               "type": "matches_any_of",
-              "value": "no,No.,NO,nope,Nope.,nope.,Non, non, NON, Non. NON., non.,아니요,아니요.,Không,Không.,không,không.,Khong,Khong.,khong,khong.,Ko,Ko.ko,ko.,Нет,Нет.,нет,нет.,НЕТ,НЕТ.,niet,niet.,nyet,nyet.,لا,لا."
+              "value": "no,No.,NO,nope,Nope.,nope.,Non, non, NON, Non. NON., non.,아니요,아니요.,Không,Không.,không,không.,Khong,Khong.,khong,khong.,Ko,Ko.ko,ko.,Нет,Нет.,нет,нет.,НЕТ,НЕТ.,niet,niet.,nyet,nyet.,لا,لا.,否,否."
             }
           ]
         },
@@ -369,7 +369,7 @@
                 "{{widgets.voice_reply_to_prompt.SpeechResult}}"
               ],
               "type": "matches_any_of",
-              "value": "yes,Yes,Yes.,Yeah,yeah,Yeah.,si, Si,oui, OUI, Oui, oui.,OUI.,Oui.,네,네.,Có,Có.,có,có.,Co,Co.,co,co.,Да,Да.,да,да.,ДA,ДA.,Da,Da.,da,da.,نعم,نعم."
+              "value": "yes,Yes,Yes.,Yeah,yeah,Yeah.,si, Si,oui, OUI, Oui, oui.,OUI.,Oui.,네,네.,Có,Có.,có,có.,Co,Co.,co,co.,Да,Да.,да,да.,ДA,ДA.,Da,Da.,da,da.,نعم,نعم.,是,是."
             }
           ]
         }
