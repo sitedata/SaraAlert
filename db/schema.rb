@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2021_09_09_184215) do
+ActiveRecord::Schema.define(version: 2021_09_11_182500) do
 
   create_table "active_storage_attachments", charset: "utf8", force: :cascade do |t|
     t.string "name", null: false
@@ -258,11 +258,10 @@ ActiveRecord::Schema.define(version: 2021_09_09_184215) do
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.string "status", default: "Missing"
-    t.integer "isolation_to_exposure_total"
-    t.integer "exposure_to_isolation_total"
     t.integer "exposure_to_isolation_active"
     t.integer "exposure_to_isolation_not_active"
-    t.integer "exposure_to_isolation_closed_in_exposure"
+    t.integer "cases_closed_in_exposure"
+    t.integer "isolation_to_exposure"
     t.index ["analytic_id"], name: "index_monitoree_snapshots_on_analytic_id"
   end
 
@@ -451,6 +450,9 @@ ActiveRecord::Schema.define(version: 2021_09_09_184215) do
     t.string "legacy_secondary_language"
     t.string "follow_up_reason"
     t.text "follow_up_note"
+    t.string "enrolled_workflow"
+    t.datetime "isolation_to_exposure_at", precision: 6
+    t.datetime "exposure_to_isolation_at", precision: 6
     t.index ["assigned_user"], name: "index_patients_on_assigned_user"
     t.index ["creator_id"], name: "index_patients_on_creator_id"
     t.index ["date_of_birth"], name: "index_patients_on_date_of_birth"
